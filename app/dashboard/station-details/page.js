@@ -1077,5 +1077,3 @@ export default function StationDetailsPage() {
     </div>
   )
 }
-
-</merged_code>
