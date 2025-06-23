@@ -5,24 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Download, FileText, BarChart3, TrendingUp, Users, AlertTriangle } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { useState } from "react"
 
 export default function ReportsPage() {
   const reportTypes = [
-    {
-      id: "service-report",
-      title: "Service Report",
-      description: "Generate periodic inspection and maintenance service reports",
-      icon: FileText,
-      category: "Operations",
-      lastGenerated: "2024-01-15",
-      frequency: "Daily",
-      isCustomForm: true,
-    },
     {
       id: "work-orders",
       title: "Work Orders Report",
@@ -114,128 +99,6 @@ export default function ReportsPage() {
     },
   ]
 
-  const [showServiceReportForm, setShowServiceReportForm] = useState(false)
-  const [serviceReportData, setServiceReportData] = useState({
-    date: new Date().toISOString().split("T")[0],
-    stationName: "Al-Rashid Gas Station",
-    fuelDispenser: "",
-    controlRoom: "",
-    bathroom: "",
-    supervisor: "",
-    additionalNotes: "",
-  })
-
-  const handleGenerateServiceReport = () => {
-    // Generate PDF content
-    const reportContent = generateServiceReportHTML(serviceReportData)
-
-    // Create and download PDF
-    const printWindow = window.open("", "_blank")
-    printWindow.document.write(reportContent)
-    printWindow.document.close()
-    printWindow.print()
-
-    setShowServiceReportForm(false)
-  }
-
-  const generateServiceReportHTML = (data) => {
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Service Report</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
-          .header { text-align: center; margin-bottom: 30px; }
-          .title { font-size: 24px; font-weight: bold; margin-bottom: 20px; }
-          .date-section { margin-bottom: 20px; }
-          .section { margin-bottom: 25px; }
-          .section-title { font-weight: bold; margin-bottom: 10px; }
-          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-          th, td { border: 1px solid #000; padding: 12px; text-align: left; }
-          th { background-color: #f5f5f5; font-weight: bold; }
-          .signature-section { margin-top: 50px; display: flex; justify-content: space-between; }
-          .signature-box { width: 45%; }
-          .signature-line { border-bottom: 1px solid #000; margin-top: 30px; padding-bottom: 5px; }
-          .checkbox { margin-right: 8px; }
-          .maintenance-row { height: 60px; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="title">Service Report</div>
-        </div>
-        
-        <div class="date-section">
-          <strong>Date:</strong> ${data.date}
-        </div>
-        
-        <div class="section">
-          <p>Periodic Inspection & maintenance was carried out at <strong>${data.stationName}</strong> and included the following:</p>
-          <ul>
-            <li>☑ Fuel Dispenser inspection.</li>
-            <li>☑ Bathroom.</li>
-            <li>☑ Control room.</li>
-            <li>☑ Accommodation</li>
-          </ul>
-        </div>
-        
-        <div class="section">
-          <div class="section-title">Maintenance Service:</div>
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 25%;">Section</th>
-                <th style="width: 15%;">Date</th>
-                <th style="width: 60%;">Maintenance Inspection & Service</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr class="maintenance-row">
-                <td><strong>Fuel Dispenser</strong></td>
-                <td>${data.date}</td>
-                <td>${data.fuelDispenser || ""}</td>
-              </tr>
-              <tr class="maintenance-row">
-                <td><strong>Control Room & Accommodation</strong></td>
-                <td>${data.date}</td>
-                <td>${data.controlRoom || ""}</td>
-              </tr>
-              <tr class="maintenance-row">
-                <td><strong>Bathroom</strong></td>
-                <td>${data.date}</td>
-                <td>${data.bathroom || ""}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        
-        ${
-          data.additionalNotes
-            ? `
-        <div class="section">
-          <div class="section-title">Additional Notes:</div>
-          <p>${data.additionalNotes}</p>
-        </div>
-        `
-            : ""
-        }
-        
-        <div class="signature-section">
-          <div class="signature-box">
-            <strong>Station Supervisor</strong>
-            <div class="signature-line">${data.supervisor || ""}</div>
-          </div>
-          <div class="signature-box">
-            <strong>Signature</strong>
-            <div class="signature-line"></div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `
-  }
-
   const getCategoryColor = (category) => {
     switch (category) {
       case "Operations":
@@ -256,12 +119,8 @@ export default function ReportsPage() {
   }
 
   const handleGenerateReport = (reportId) => {
-    if (reportId === "service-report") {
-      setShowServiceReportForm(true)
-    } else {
-      console.log(`Generating report: ${reportId}`)
-      // Here you would implement the actual report generation logic for other reports
-    }
+    console.log(`Generating report: ${reportId}`)
+    // Here you would implement the actual report generation logic
   }
 
   const handleExportReport = (reportId, format) => {
@@ -428,103 +287,6 @@ export default function ReportsPage() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Service Report Form Dialog */}
-      <Dialog open={showServiceReportForm} onOpenChange={setShowServiceReportForm}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Generate Service Report</DialogTitle>
-            <DialogDescription>
-              Fill in the maintenance details to generate a professional service report
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="report-date">Date</Label>
-                <Input
-                  id="report-date"
-                  type="date"
-                  value={serviceReportData.date}
-                  onChange={(e) => setServiceReportData({ ...serviceReportData, date: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="station-name">Station Name</Label>
-                <Input
-                  id="station-name"
-                  value={serviceReportData.stationName}
-                  onChange={(e) => setServiceReportData({ ...serviceReportData, stationName: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="fuel-dispenser">Fuel Dispenser - Maintenance Inspection & Service</Label>
-              <Textarea
-                id="fuel-dispenser"
-                placeholder="Describe fuel dispenser maintenance activities..."
-                value={serviceReportData.fuelDispenser}
-                onChange={(e) => setServiceReportData({ ...serviceReportData, fuelDispenser: e.target.value })}
-                rows={3}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="control-room">Control Room & Accommodation - Maintenance Inspection & Service</Label>
-              <Textarea
-                id="control-room"
-                placeholder="Describe control room and accommodation maintenance activities..."
-                value={serviceReportData.controlRoom}
-                onChange={(e) => setServiceReportData({ ...serviceReportData, controlRoom: e.target.value })}
-                rows={3}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="bathroom">Bathroom - Maintenance Inspection & Service</Label>
-              <Textarea
-                id="bathroom"
-                placeholder="Describe bathroom maintenance activities..."
-                value={serviceReportData.bathroom}
-                onChange={(e) => setServiceReportData({ ...serviceReportData, bathroom: e.target.value })}
-                rows={3}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="supervisor">Station Supervisor Name</Label>
-              <Input
-                id="supervisor"
-                placeholder="Enter supervisor name"
-                value={serviceReportData.supervisor}
-                onChange={(e) => setServiceReportData({ ...serviceReportData, supervisor: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="additional-notes">Additional Notes (Optional)</Label>
-              <Textarea
-                id="additional-notes"
-                placeholder="Any additional maintenance notes or observations..."
-                value={serviceReportData.additionalNotes}
-                onChange={(e) => setServiceReportData({ ...serviceReportData, additionalNotes: e.target.value })}
-                rows={2}
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 mt-6">
-            <Button variant="outline" onClick={() => setShowServiceReportForm(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleGenerateServiceReport}>
-              <FileText className="mr-2 h-4 w-4" />
-              Generate & Export PDF
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
