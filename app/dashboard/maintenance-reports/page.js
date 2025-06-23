@@ -1,22 +1,40 @@
 "use client"
 
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar, Download, TrendingUp, AlertTriangle, CheckCircle, FileText, BarChart3 } from "lucide-react"
+import {
+  Calendar,
+  Download,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle,
+  FileText,
+  BarChart3,
+  Search,
+  Filter,
+  X,
+} from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 export default function MaintenanceReportsPage() {
   const [selectedPeriod, setSelectedPeriod] = useState("30")
   const [selectedAssetType, setSelectedAssetType] = useState("all")
 
-  // Maintenance History Data
+  // New filter states
+  const [dateFilter, setDateFilter] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [equipmentIdFilter, setEquipmentIdFilter] = useState("")
+  const [searchTerm, setSearchTerm] = useState("")
+
+  // Enhanced Maintenance History Data
   const maintenanceHistory = [
     {
       assetId: "DISP-001",
@@ -60,7 +78,101 @@ export default function MaintenanceReportsPage() {
       nextDue: "2025-01-10",
       issues: ["End of life replacement", "Flow rate below threshold"],
     },
+    {
+      assetId: "DISP-002",
+      assetName: "Fuel Pump #2",
+      assetType: "Fuel Dispenser",
+      workOrderId: "WO-004",
+      maintenanceType: "Emergency Repair",
+      technician: "Omar Al-Zahra",
+      date: "2024-01-08",
+      duration: "3.5 hours",
+      cost: "SAR 650",
+      status: "In Progress",
+      nextDue: "2024-02-08",
+      issues: ["Display malfunction", "Pump motor noise"],
+    },
+    {
+      assetId: "HOSE-005",
+      assetName: "Hose #5 - Island B",
+      assetType: "Hose",
+      workOrderId: "WO-005",
+      maintenanceType: "Preventive Maintenance",
+      technician: "Fahad Al-Mutairi",
+      date: "2024-01-05",
+      duration: "1.5 hours",
+      cost: "SAR 320",
+      status: "Overdue",
+      nextDue: "2024-01-20",
+      issues: ["Pressure test required", "Visual inspection needed"],
+    },
+    {
+      assetId: "TANK-002",
+      assetName: "Storage Tank #2",
+      assetType: "Storage Tank",
+      workOrderId: "WO-006",
+      maintenanceType: "Corrosion Inspection",
+      technician: "Ahmed Al-Rashid",
+      date: "2024-01-03",
+      duration: "5 hours",
+      cost: "SAR 950",
+      status: "Pending",
+      nextDue: "2024-07-03",
+      issues: ["Scheduled inspection", "Coating assessment"],
+    },
+    {
+      assetId: "NOZZLE-007",
+      assetName: "Nozzle #7 - Island C",
+      assetType: "Nozzle",
+      workOrderId: "WO-007",
+      maintenanceType: "Flow Rate Calibration",
+      technician: "Mohammed Al-Fahad",
+      date: "2024-01-01",
+      duration: "2 hours",
+      cost: "SAR 380",
+      status: "Completed",
+      nextDue: "2024-04-01",
+      issues: ["Calibration completed", "Flow rate within specs"],
+    },
   ]
+
+  // Filtered maintenance history
+  const filteredMaintenanceHistory = useMemo(() => {
+    return maintenanceHistory.filter((item) => {
+      // Asset type filter
+      if (selectedAssetType !== "all" && item.assetType !== selectedAssetType) {
+        return false
+      }
+
+      // Date filter
+      if (dateFilter && !item.date.includes(dateFilter)) {
+        return false
+      }
+
+      // Status filter
+      if (statusFilter !== "all" && item.status !== statusFilter) {
+        return false
+      }
+
+      // Equipment ID filter
+      if (equipmentIdFilter && !item.assetId.toLowerCase().includes(equipmentIdFilter.toLowerCase())) {
+        return false
+      }
+
+      // Search term filter (searches in asset name, technician, and work order ID)
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase()
+        return (
+          item.assetName.toLowerCase().includes(searchLower) ||
+          item.technician.toLowerCase().includes(searchLower) ||
+          item.workOrderId.toLowerCase().includes(searchLower) ||
+          item.maintenanceType.toLowerCase().includes(searchLower)
+        )
+      }
+
+      return true
+    })
+  }, [maintenanceHistory, selectedAssetType, dateFilter, statusFilter, equipmentIdFilter, searchTerm])
 
   // Component Lifetime Data
   const componentLifetime = [
@@ -189,12 +301,38 @@ export default function MaintenanceReportsPage() {
     }
   }
 
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "Completed":
+        return "bg-green-100 text-green-800"
+      case "In Progress":
+        return "bg-blue-100 text-blue-800"
+      case "Pending":
+        return "bg-yellow-100 text-yellow-800"
+      case "Overdue":
+        return "bg-red-100 text-red-800"
+      default:
+        return "bg-gray-100 text-gray-800"
+    }
+  }
+
   const getLifetimeColor = (percentage) => {
     const percent = Number.parseInt(percentage)
     if (percent > 70) return "text-green-600"
     if (percent > 40) return "text-yellow-600"
     return "text-red-600"
   }
+
+  const clearAllFilters = () => {
+    setSelectedAssetType("all")
+    setDateFilter("")
+    setStatusFilter("all")
+    setEquipmentIdFilter("")
+    setSearchTerm("")
+  }
+
+  const hasActiveFilters =
+    selectedAssetType !== "all" || dateFilter || statusFilter !== "all" || equipmentIdFilter || searchTerm
 
   return (
     <div className="space-y-6">
@@ -242,8 +380,8 @@ export default function MaintenanceReportsPage() {
                 <CardTitle className="text-sm">Total Maintenance</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">156</div>
-                <p className="text-xs text-muted-foreground">Tasks completed</p>
+                <div className="text-2xl font-bold">{filteredMaintenanceHistory.length}</div>
+                <p className="text-xs text-muted-foreground">Tasks {hasActiveFilters ? "filtered" : "total"}</p>
               </CardContent>
             </Card>
             <Card>
@@ -275,13 +413,39 @@ export default function MaintenanceReportsPage() {
             </Card>
           </div>
 
+          {/* Enhanced Filters */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>Maintenance History by Asset Type</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Filter className="h-5 w-5" />
+                  Maintenance History Filters
+                </CardTitle>
+                {hasActiveFilters && (
+                  <Button variant="outline" size="sm" onClick={clearAllFilters}>
+                    <X className="h-4 w-4 mr-2" />
+                    Clear All Filters
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-6">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
+                {/* Asset Type Filter */}
                 <Select value={selectedAssetType} onValueChange={setSelectedAssetType}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Filter by asset type" />
+                  <SelectTrigger>
+                    <SelectValue placeholder="Asset Type" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Asset Types</SelectItem>
@@ -291,27 +455,116 @@ export default function MaintenanceReportsPage() {
                     <SelectItem value="Hose">Hoses</SelectItem>
                   </SelectContent>
                 </Select>
+
+                {/* Date Filter */}
+                <Input
+                  type="date"
+                  placeholder="Filter by date"
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                />
+
+                {/* Status Filter */}
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="Completed">Completed</SelectItem>
+                    <SelectItem value="In Progress">In Progress</SelectItem>
+                    <SelectItem value="Pending">Pending</SelectItem>
+                    <SelectItem value="Overdue">Overdue</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Equipment ID Filter */}
+                <Input
+                  placeholder="Equipment ID"
+                  value={equipmentIdFilter}
+                  onChange={(e) => setEquipmentIdFilter(e.target.value)}
+                />
+
+                {/* Results Count */}
+                <div className="flex items-center justify-center">
+                  <Badge variant="outline" className="text-sm">
+                    {filteredMaintenanceHistory.length} results
+                  </Badge>
+                </div>
               </div>
+
+              {/* Active Filters Display */}
+              {hasActiveFilters && (
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {selectedAssetType !== "all" && (
+                    <Badge variant="secondary" className="flex items-center gap-1">
+                      Asset: {selectedAssetType}
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedAssetType("all")} />
+                    </Badge>
+                  )}
+                  {dateFilter && (
+                    <Badge variant="secondary" className="flex items-center gap-1">
+                      Date: {dateFilter}
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => setDateFilter("")} />
+                    </Badge>
+                  )}
+                  {statusFilter !== "all" && (
+                    <Badge variant="secondary" className="flex items-center gap-1">
+                      Status: {statusFilter}
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => setStatusFilter("all")} />
+                    </Badge>
+                  )}
+                  {equipmentIdFilter && (
+                    <Badge variant="secondary" className="flex items-center gap-1">
+                      ID: {equipmentIdFilter}
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => setEquipmentIdFilter("")} />
+                    </Badge>
+                  )}
+                  {searchTerm && (
+                    <Badge variant="secondary" className="flex items-center gap-1">
+                      Search: {searchTerm}
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => setSearchTerm("")} />
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Maintenance History</CardTitle>
+              <CardDescription>
+                {hasActiveFilters
+                  ? `Showing ${filteredMaintenanceHistory.length} filtered results`
+                  : `Showing all ${maintenanceHistory.length} maintenance records`}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Asset</TableHead>
-                    <TableHead>Work Order</TableHead>
-                    <TableHead>Maintenance Type</TableHead>
-                    <TableHead>Technician</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead>Cost</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Next Due</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {maintenanceHistory
-                    .filter((item) => selectedAssetType === "all" || item.assetType === selectedAssetType)
-                    .map((item, index) => (
+              {filteredMaintenanceHistory.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No maintenance records match your filters.</p>
+                  <Button variant="outline" onClick={clearAllFilters} className="mt-2">
+                    Clear Filters
+                  </Button>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Asset</TableHead>
+                      <TableHead>Work Order</TableHead>
+                      <TableHead>Maintenance Type</TableHead>
+                      <TableHead>Technician</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Duration</TableHead>
+                      <TableHead>Cost</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Next Due</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredMaintenanceHistory.map((item, index) => (
                       <TableRow key={index}>
                         <TableCell>
                           <div>
@@ -326,13 +579,14 @@ export default function MaintenanceReportsPage() {
                         <TableCell>{item.duration}</TableCell>
                         <TableCell>{item.cost}</TableCell>
                         <TableCell>
-                          <Badge className="bg-green-100 text-green-800">{item.status}</Badge>
+                          <Badge className={getStatusColor(item.status)}>{item.status}</Badge>
                         </TableCell>
                         <TableCell>{item.nextDue}</TableCell>
                       </TableRow>
                     ))}
-                </TableBody>
-              </Table>
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

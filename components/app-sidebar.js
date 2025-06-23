@@ -27,6 +27,7 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 
 const menuItems = [
   {
@@ -87,40 +88,71 @@ const menuItems = [
 ]
 
 export function AppSidebar() {
+  const pathname = usePathname()
+
   return (
-    <Sidebar>
-      <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-2">
-          <div className="bg-blue-600 p-2 rounded-lg">
+    <Sidebar className="border-r border-gray-200 bg-white">
+      <SidebarHeader className="border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <div className="flex items-center gap-3 px-4 py-4">
+          <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-2.5 rounded-xl shadow-lg">
             <Wrench className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h2 className="font-bold text-lg">CMMS</h2>
-            <p className="text-xs text-muted-foreground">Gas Station KSA</p>
+            <h2 className="font-bold text-xl text-gray-900">CMMS</h2>
+            <p className="text-sm text-blue-600 font-medium">Gas Station KSA</p>
           </div>
         </div>
       </SidebarHeader>
-      <SidebarContent>
+
+      <SidebarContent className="py-4">
         <SidebarGroup>
-          <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <Link href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+          <SidebarGroupLabel className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Main Menu
+          </SidebarGroupLabel>
+          <SidebarGroupContent className="px-2">
+            <SidebarMenu className="space-y-1">
+              {menuItems.map((item) => {
+                const isActive = pathname === item.url
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      className={`
+                        group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ease-in-out
+                        ${
+                          isActive
+                            ? "bg-blue-50 text-blue-700 border-r-2 border-blue-600 shadow-sm"
+                            : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                        }
+                        hover:shadow-sm hover:scale-[1.02] active:scale-[0.98]
+                      `}
+                    >
+                      <Link href={item.url} className="flex items-center gap-3 w-full">
+                        <item.icon
+                          className={`
+                          h-5 w-5 transition-colors duration-200
+                          ${isActive ? "text-blue-600" : "text-gray-500 group-hover:text-gray-700"}
+                        `}
+                        />
+                        <span className="truncate">{item.title}</span>
+                        {isActive && (
+                          <div className="absolute right-2 w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
+                        )}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
-        <div className="p-2 text-xs text-muted-foreground">© 2024 Gas Station CMMS</div>
+
+      <SidebarFooter className="border-t border-gray-100 bg-gray-50/50">
+        <div className="p-4 text-center">
+          <p className="text-xs text-gray-500 font-medium">© 2024 Gas Station CMMS</p>
+          <p className="text-xs text-gray-400 mt-1">Version 2.0</p>
+        </div>
       </SidebarFooter>
     </Sidebar>
   )
