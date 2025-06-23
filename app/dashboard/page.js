@@ -1,12 +1,16 @@
 "use client"
 
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ClipboardList, AlertTriangle, CheckCircle, Clock, TrendingUp, TrendingDown, Plus } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
+import WorkOrderForm from "@/components/work-order-form"
 
 export default function DashboardPage() {
+  const [showWorkOrderForm, setShowWorkOrderForm] = useState(false)
+
   const kpiData = [
     {
       title: "Total Work Orders",
@@ -100,6 +104,13 @@ export default function DashboardPage() {
     }
   }
 
+  const handleWorkOrderSubmit = (workOrderData) => {
+    console.log("Work Order Submitted:", workOrderData)
+    // Here you would typically dispatch to Redux or call an API
+    setShowWorkOrderForm(false)
+    // Show success toast or update the dashboard
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -108,7 +119,7 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">Welcome back! Here's what's happening at your gas station.</p>
         </div>
-        <Button>
+        <Button onClick={() => setShowWorkOrderForm(true)}>
           <Plus className="mr-2 h-4 w-4" />
           New Work Order
         </Button>
@@ -270,6 +281,15 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Work Order Form Modal */}
+      {showWorkOrderForm && (
+        <WorkOrderForm
+          isOpen={showWorkOrderForm}
+          onClose={() => setShowWorkOrderForm(false)}
+          onSubmit={handleWorkOrderSubmit}
+        />
+      )}
     </div>
   )
 }

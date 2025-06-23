@@ -8,16 +8,9 @@ import { Badge } from "@/components/ui/badge"
 import { Plus, Search, Eye, Edit, Trash2, FileText, Calendar, AlertCircle, CheckCircle, Clock } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import AddAssetForm from "@/components/add-asset-form"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function AssetsPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -25,6 +18,8 @@ export default function AssetsPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [selectedAsset, setSelectedAsset] = useState(null)
   const [showAssetDetails, setShowAssetDetails] = useState(false)
+  const [showAddAssetForm, setShowAddAssetForm] = useState(false)
+  const { toast } = useToast()
 
   const assets = [
     {
@@ -207,71 +202,22 @@ export default function AssetsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Assets</h1>
           <p className="text-muted-foreground">Manage and track all gas station assets and equipment</p>
         </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Asset
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Add New Asset</DialogTitle>
-              <DialogDescription>Register a new asset in your gas station inventory.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="assetName">Asset Name</Label>
-                  <Input id="assetName" placeholder="e.g., Fuel Pump #5" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="fuel-dispensing">Fuel Dispensing</SelectItem>
-                      <SelectItem value="storage">Storage</SelectItem>
-                      <SelectItem value="safety">Safety</SelectItem>
-                      <SelectItem value="utility">Utility</SelectItem>
-                      <SelectItem value="pos">Point of Sale</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Input id="location" placeholder="e.g., Pump Island B" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="serialNumber">Serial Number</Label>
-                  <Input id="serialNumber" placeholder="Asset serial number" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="manufacturer">Manufacturer</Label>
-                  <Input id="manufacturer" placeholder="Equipment manufacturer" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="installDate">Install Date</Label>
-                  <Input id="installDate" type="date" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea id="description" placeholder="Asset description and notes" />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline">Cancel</Button>
-              <Button>Add Asset</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <>
+          <Button onClick={() => setShowAddAssetForm(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Asset
+          </Button>
+
+          <AddAssetForm
+            isOpen={showAddAssetForm}
+            onClose={() => setShowAddAssetForm(false)}
+            onSubmit={(assetData) => {
+              console.log("New asset added:", assetData)
+              // Here you would typically dispatch to Redux or call an API
+              toast.success(`Asset ${assetData.equipmentName} added successfully!`)
+            }}
+          />
+        </>
       </div>
 
       {/* Summary Cards */}

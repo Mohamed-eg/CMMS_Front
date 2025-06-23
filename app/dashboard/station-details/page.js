@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from "react-redux"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Upload, Eye, Edit, Zap, Droplets, AlertTriangle, Loader2, RefreshCw } from "lucide-react"
+import { MapPin, Upload, Eye, Edit, Zap, Droplets, AlertTriangle, Loader2, RefreshCw, Plus } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
@@ -20,6 +20,7 @@ import {
   clearErrors,
 } from "@/lib/features/stations/stationsSlice"
 import { toast } from "sonner"
+import AddStationForm from "@/components/add-station-form"
 
 export default function StationDetailsPage() {
   const dispatch = useDispatch()
@@ -27,6 +28,7 @@ export default function StationDetailsPage() {
 
   const [selectedImage, setSelectedImage] = useState(null)
   const [showDefaultStation, setShowDefaultStation] = useState(false)
+  const [showAddStationForm, setShowAddStationForm] = useState(false)
 
   // Default station data (Version 2) - Enhanced with more comprehensive data
   const defaultStationData = {
@@ -543,6 +545,11 @@ export default function StationDetailsPage() {
               Refresh
             </Button>
 
+            <Button onClick={() => setShowAddStationForm(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add New Station
+            </Button>
+
             <Button disabled={!selectedStation && !showDefaultStation}>
               <Upload className="mr-2 h-4 w-4" />
               Upload Documents
@@ -1054,6 +1061,21 @@ export default function StationDetailsPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Add Station Form */}
+      <AddStationForm
+        isOpen={showAddStationForm}
+        onClose={() => setShowAddStationForm(false)}
+        onSubmit={(stationData) => {
+          console.log("New station added:", stationData)
+          // Here you would typically dispatch to Redux or call an API
+          toast.success(`Station ${stationData.stationName} added successfully!`)
+          // Optionally refresh the stations list
+          dispatch(fetchStations())
+        }}
+      />
     </div>
   )
 }
+
+</merged_code>
