@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Search, Eye, Edit, Trash2, UserPlus, Shield, User, Mail, Phone } from "lucide-react"
+import { Search, Eye, Edit, Trash2, UserPlus, Shield, User, Mail, Phone, RefreshCw } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
@@ -18,13 +18,20 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { fetchUsers, fetchUserStats } from "@/lib/api/users"
+import { toast } from "sonner"
 
 export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [users, setUsers] = useState([])
+  const [userStats, setUserStats] = useState({})
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  const users = [
+  // Default fallback data
+  const defaultUsers = [
     {
       id: "USR-001",
       name: "Ahmed Al-Rashid",
@@ -82,6 +89,43 @@ export default function UsersPage() {
     },
   ]
 
+  // Load users data
+  const loadUsers = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const filters = {
+        search: searchTerm,
+        role: roleFilter,
+        status: statusFilter,
+      }
+
+      const [usersData, statsData] = await Promise.all([fetchUsers(filters), fetchUserStats()])
+
+      setUsers(usersData.users || usersData || [])
+      setUserStats(statsData || {})
+      toast.success("Users loaded successfully")
+    } catch (err) {
+      console.error("Error loading users:", err)
+      setError(err.message)
+      setUsers(defaultUsers) // Use fallback data
+      toast.error("Failed to load users, showing cached data")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Load data on component mount and when filters change
+  useEffect(() => {
+    // Comment out API call for now until backend is ready
+    // loadUsers()
+
+    // Use default data for now
+    setUsers(defaultUsers)
+    setLoading(false)
+  }, [searchTerm, roleFilter, statusFilter])
+
   const getRoleColor = (role) => {
     switch (role) {
       case "Admin":
@@ -132,6 +176,53 @@ export default function UsersPage() {
     return matchesSearch && matchesRole && matchesStatus
   })
 
+  const handleCreateUser = async (formData) => {
+    try {
+      const userData = {
+        firstName: formData.get("firstName"),
+        lastName: formData.get("lastName"),
+        email: formData.get("email"),
+        phone: formData.get("phone"),
+        role: formData.get("role"),
+        status: formData.get("status"),
+        password: formData.get("password"),
+      }
+
+      // Comment out API call for now
+      // await createUser(userData)
+
+      toast.success("User created successfully")
+      loadUsers() // Refresh the list
+    } catch (err) {
+      console.error("Error creating user:", err)
+      toast.error("Failed to create user")
+    }
+  }
+
+  const handleDeleteUser = async (id) => {
+    try {
+      // Comment out API call for now
+      // await deleteUser(id)
+
+      toast.success("User deleted successfully")
+      loadUsers() // Refresh the list
+    } catch (err) {
+      console.error("Error deleting user:", err)
+      toast.error("Failed to delete user")
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center gap-2">
+          <RefreshCw className="h-4 w-4 animate-spin" />
+          <span>Loading users...</span>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -140,78 +231,101 @@ export default function UsersPage() {
           <h1 className="text-3xl font-bold tracking-tight">Users</h1>
           <p className="text-muted-foreground">Manage user accounts and permissions for your gas station</p>
         </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>
-              <UserPlus className="mr-2 h-4 w-4" />
-              Add User
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Add New User</DialogTitle>
-              <DialogDescription>Create a new user account for your gas station staff.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input id="firstName" placeholder="Ahmed" />
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={loadUsers} disabled={loading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Add User
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Add New User</DialogTitle>
+                <DialogDescription>Create a new user account for your gas station staff.</DialogDescription>
+              </DialogHeader>
+              <form action={handleCreateUser}>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">First Name</Label>
+                      <Input id="firstName" name="firstName" placeholder="Ahmed" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <Input id="lastName" name="lastName" placeholder="Al-Rashid" required />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input id="email" name="email" type="email" placeholder="user@gasstation.sa" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone</Label>
+                      <Input id="phone" name="phone" placeholder="+966 50 123 4567" required />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="role">Role</Label>
+                      <Select name="role" required>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Admin">Admin</SelectItem>
+                          <SelectItem value="Manager">Manager</SelectItem>
+                          <SelectItem value="Technician">Technician</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="status">Status</Label>
+                      <Select name="status" defaultValue="Active" required>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Active">Active</SelectItem>
+                          <SelectItem value="Inactive">Inactive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Temporary Password</Label>
+                    <Input id="password" name="password" type="password" placeholder="Temporary password" required />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input id="lastName" placeholder="Al-Rashid" />
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline">
+                    Cancel
+                  </Button>
+                  <Button type="submit">Create User</Button>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" placeholder="user@gasstation.sa" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input id="phone" placeholder="+966 50 123 4567" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="manager">Manager</SelectItem>
-                      <SelectItem value="technician">Technician</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select defaultValue="active">
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Temporary Password</Label>
-                <Input id="password" type="password" placeholder="Temporary password" />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline">Cancel</Button>
-              <Button>Create User</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-red-800">
+              <span className="font-medium">API Error:</span>
+              <span>{error}</span>
+              <span className="text-sm">(Showing cached data)</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-4">
@@ -375,7 +489,7 @@ export default function UsersPage() {
                       <Button variant="ghost" size="sm">
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteUser(user.id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>

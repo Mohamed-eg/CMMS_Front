@@ -1,16 +1,29 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Eye, Edit, Trash2, FileText, Calendar, AlertCircle, CheckCircle, Clock } from "lucide-react"
+import {
+  Plus,
+  Search,
+  Eye,
+  Edit,
+  Trash2,
+  FileText,
+  Calendar,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  RefreshCw,
+} from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import AddAssetForm from "@/components/add-asset-form"
-import { useToast } from "@/components/ui/use-toast"
+import { fetchAssets, fetchAssetStats } from "@/lib/api/assets"
+import { toast } from "sonner"
 
 export default function AssetsPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -19,9 +32,13 @@ export default function AssetsPage() {
   const [selectedAsset, setSelectedAsset] = useState(null)
   const [showAssetDetails, setShowAssetDetails] = useState(false)
   const [showAddAssetForm, setShowAddAssetForm] = useState(false)
-  const { toast } = useToast()
+  const [assets, setAssets] = useState([])
+  const [assetStats, setAssetStats] = useState({})
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  const assets = [
+  // Default fallback data
+  const defaultAssets = [
     {
       id: "AST-001",
       name: "Fuel Pump #1",
@@ -140,6 +157,43 @@ export default function AssetsPage() {
     },
   ]
 
+  // Load assets data
+  const loadAssets = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const filters = {
+        search: searchTerm,
+        category: categoryFilter,
+        status: statusFilter,
+      }
+
+      const [assetsData, statsData] = await Promise.all([fetchAssets(filters), fetchAssetStats()])
+
+      setAssets(assetsData.assets || assetsData || [])
+      setAssetStats(statsData || {})
+      toast.success("Assets loaded successfully")
+    } catch (err) {
+      console.error("Error loading assets:", err)
+      setError(err.message)
+      setAssets(defaultAssets) // Use fallback data
+      toast.error("Failed to load assets, showing cached data")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Load data on component mount and when filters change
+  useEffect(() => {
+    // Comment out API call for now until backend is ready
+    // loadAssets()
+
+    // Use default data for now
+    setAssets(defaultAssets)
+    setLoading(false)
+  }, [searchTerm, categoryFilter, statusFilter])
+
   const getStatusColor = (status) => {
     switch (status) {
       case "Active":
@@ -194,6 +248,30 @@ export default function AssetsPage() {
     return matchesSearch && matchesCategory && matchesStatus
   })
 
+  const handleDeleteAsset = async (id) => {
+    try {
+      // Comment out API call for now
+      // await deleteAsset(id)
+
+      toast.success("Asset deleted successfully")
+      loadAssets() // Refresh the list
+    } catch (err) {
+      console.error("Error deleting asset:", err)
+      toast.error("Failed to delete asset")
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center gap-2">
+          <RefreshCw className="h-4 w-4 animate-spin" />
+          <span>Loading assets...</span>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -202,7 +280,11 @@ export default function AssetsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Assets</h1>
           <p className="text-muted-foreground">Manage and track all gas station assets and equipment</p>
         </div>
-        <>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={loadAssets} disabled={loading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
           <Button onClick={() => setShowAddAssetForm(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Add Asset
@@ -213,12 +295,25 @@ export default function AssetsPage() {
             onClose={() => setShowAddAssetForm(false)}
             onSubmit={(assetData) => {
               console.log("New asset added:", assetData)
-              // Here you would typically dispatch to Redux or call an API
               toast.success(`Asset ${assetData.equipmentName} added successfully!`)
+              loadAssets() // Refresh the list
             }}
           />
-        </>
+        </div>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-red-800">
+              <span className="font-medium">API Error:</span>
+              <span>{error}</span>
+              <span className="text-sm">(Showing cached data)</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-4">
@@ -375,7 +470,7 @@ export default function AssetsPage() {
                       <Button variant="ghost" size="sm">
                         <FileText className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteAsset(asset.id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>

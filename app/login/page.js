@@ -7,13 +7,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Fuel } from "lucide-react"
+import { Fuel, Eye, EyeOff } from "lucide-react"
+import { authAPI } from "@/lib/api/auth"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [success, setSuccess] = useState(false)
   const router = useRouter()
 
   const handleLogin = async (e) => {
@@ -21,22 +24,38 @@ export default function LoginPage() {
     setLoading(true)
     setError("")
 
-    // Simulate authentication
-    if (email === "admin@gasstation.sa" && password === "admin123") {
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          id: 1,
-          name: "Ahmed Al-Rashid",
-          email: "admin@gasstation.sa",
-          role: "Admin",
-        }),
-      )
-      router.push("/dashboard")
-    } else {
-      setError("Invalid email or password")
+    try {
+      console.log("🔐 Attempting login with:", { email, password: "***" })
+      console.log("📡 API URL:", "https://cmms-back.vercel.app/api/auth/login")
+
+      // Call the real API
+      const response = await authAPI.login(email, password)
+
+      console.log("✅ Login successful:", response)
+      setSuccess(true)
+
+      // Store authentication data
+      if (response.token) {
+        localStorage.setItem("authToken", response.token)
+      }
+
+      if (response.user) {
+        localStorage.setItem("user", JSON.stringify(response.user))
+      }
+
+      console.log("✅ Login successful, redirecting to dashboard...")
+
+      // Add a small delay to ensure localStorage is saved
+      setTimeout(() => {
+        router.push("/dashboard")
+      }, 100)
+    } catch (error) {
+      console.error("❌ Login error:", error.message)
+      setError(error.message)
+      setSuccess(false)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
@@ -58,36 +77,74 @@ export default function LoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@gasstation.sa"
+                placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={loading}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  disabled={loading}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
+
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
+
+            {success && (
+              <Alert className="border-green-200 bg-green-50 text-green-800">
+                <AlertDescription>✅ Login successful! Redirecting to dashboard...</AlertDescription>
+              </Alert>
+            )}
+
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Signing in...
+                </div>
+              ) : (
+                "Sign In"
+              )}
             </Button>
           </form>
-          <div className="mt-4 text-sm text-gray-600 text-center">
-            <p>Demo credentials:</p>
-            <p>Email: admin@gasstation.sa</p>
-            <p>Password: admin123</p>
+
+          <div className="mt-6 text-center">
+            <div className="text-sm text-gray-600">
+              <p className="mb-2">🔗 Connected to Backend API</p>
+              <p className="text-xs text-gray-500">Server: cmms-back.vercel.app</p>
+            </div>
+          </div>
+
+          {/* Development info - remove in production */}
+          <div className="mt-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-600">
+            <p className="font-semibold mb-1">API Integration Active:</p>
+            <p>• POST /api/auth/login</p>
+            <p>• Real-time authentication</p>
+            <p>• Error handling for email/password</p>
           </div>
         </CardContent>
       </Card>

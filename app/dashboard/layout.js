@@ -19,6 +19,7 @@ import {
 
 export default function DashboardLayout({ children }) {
   const [user, setUser] = useState(null)
+  const [isOpen, setIsOpen] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -35,6 +36,11 @@ export default function DashboardLayout({ children }) {
     router.push("/login")
   }
 
+  const handleProfileClick = () => {
+    setIsOpen(false)
+    router.push("/dashboard/profile")
+  }
+
   if (!user) {
     return <div>Loading...</div>
   }
@@ -49,20 +55,28 @@ export default function DashboardLayout({ children }) {
           <div className="flex-1">
             <h1 className="font-semibold">Gas Station CMMS</h1>
           </div>
-          <DropdownMenu>
+          <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2 hover:bg-accent hover:text-accent-foreground"
+                onClick={() => setIsOpen(!isOpen)}
+              >
                 <User className="h-4 w-4" />
                 {user.name}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-56 z-50" sideOffset={5}>
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>Profile</DropdownMenuItem>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleProfileClick} className="cursor-pointer">
+                <User className="mr-2 h-4 w-4" />
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer">Settings</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout}>
+              <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 focus:text-red-600">
                 <LogOut className="mr-2 h-4 w-4" />
                 Logout
               </DropdownMenuItem>

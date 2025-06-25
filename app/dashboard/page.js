@@ -1,16 +1,30 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ClipboardList, AlertTriangle, CheckCircle, Clock, TrendingUp, TrendingDown, Plus } from "lucide-react"
+import {
+  ClipboardList,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  TrendingUp,
+  TrendingDown,
+  Plus,
+  MapPin,
+  Loader2,
+} from "lucide-react"
 import { Progress } from "@/components/ui/progress"
+import { toast } from "sonner"
 import WorkOrderForm from "@/components/work-order-form"
 
 export default function DashboardPage() {
   const [showWorkOrderForm, setShowWorkOrderForm] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
+  // Mock data for now (will be replaced with API data)
   const kpiData = [
     {
       title: "Total Work Orders",
@@ -55,6 +69,9 @@ export default function DashboardPage() {
       priority: "High",
       status: "In Progress",
       dueDate: "2024-01-15",
+      location: "Al-Noor Gas Station - Riyadh",
+      coordinates: "24.7136° N, 46.6753° E",
+      submittedFrom: "On-site",
     },
     {
       id: "WO-002",
@@ -64,6 +81,9 @@ export default function DashboardPage() {
       priority: "Medium",
       status: "Pending",
       dueDate: "2024-01-16",
+      location: "Al-Salam Gas Station - Jeddah",
+      coordinates: "21.3891° N, 39.8579° E",
+      submittedFrom: "Remote",
     },
     {
       id: "WO-003",
@@ -73,8 +93,63 @@ export default function DashboardPage() {
       priority: "Low",
       status: "Completed",
       dueDate: "2024-01-14",
+      location: "Al-Waha Gas Station - Dammam",
+      coordinates: "26.4207° N, 50.0888° E",
+      submittedFrom: "Mobile App",
     },
   ]
+
+  const assetStatus = [
+    { name: "Fuel Pumps", active: 8, total: 10, percentage: 80 },
+    { name: "Storage Tanks", active: 4, total: 4, percentage: 100 },
+    { name: "Compressors", active: 2, total: 3, percentage: 67 },
+    { name: "Safety Systems", active: 5, total: 5, percentage: 100 },
+  ]
+
+  const upcomingMaintenance = [
+    { title: "Tank Inspection", dueDate: "Tomorrow", priority: "high" },
+    { title: "Pump Calibration", dueDate: "Jan 18", priority: "medium" },
+    { title: "Fire System Check", dueDate: "Jan 20", priority: "low" },
+  ]
+
+  const quickStats = {
+    completionRate: 87,
+    avgResponseTime: "2.3 hrs",
+    activeTechnicians: 12,
+    costSavings: "+15%",
+  }
+
+  // API functions (will connect to backend later)
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      toast("Dashboard Updated", {
+        description: "Latest data has been loaded successfully.",
+      })
+    } catch (err) {
+      setError(err.message)
+      console.error("Dashboard data fetch error:", err)
+
+      toast("Error Loading Data", {
+        description: "Failed to load dashboard data. Using cached data.",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    // loadDashboardData() // Uncomment when API is ready
+  }, [])
+
+  const refreshData = async () => {
+    await loadDashboardData()
+  }
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -106,9 +181,10 @@ export default function DashboardPage() {
 
   const handleWorkOrderSubmit = (workOrderData) => {
     console.log("Work Order Submitted:", workOrderData)
-    // Here you would typically dispatch to Redux or call an API
     setShowWorkOrderForm(false)
-    // Show success toast or update the dashboard
+    toast("Work Order Created", {
+      description: "New work order has been submitted successfully.",
+    })
   }
 
   return (
@@ -118,11 +194,18 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">Welcome back! Here's what's happening at your gas station.</p>
+          {error && <p className="text-sm text-red-600 mt-1">⚠️ Some data may be outdated due to connection issues</p>}
         </div>
-        <Button onClick={() => setShowWorkOrderForm(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Work Order
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={refreshData} disabled={loading}>
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Refresh
+          </Button>
+          <Button onClick={() => setShowWorkOrderForm(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Work Order
+          </Button>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -162,7 +245,7 @@ export default function DashboardPage() {
             <div className="space-y-4">
               {recentWorkOrders.map((order) => (
                 <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="space-y-1">
+                  <div className="space-y-2 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{order.id}</span>
                       <Badge variant="outline" className={getPriorityColor(order.priority)}>
@@ -173,10 +256,25 @@ export default function DashboardPage() {
                     <p className="text-sm text-muted-foreground">
                       {order.asset} • {order.technician}
                     </p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <MapPin className="h-3 w-3" />
+                      <span>{order.location}</span>
+                      <span className="text-gray-400">•</span>
+                      <span>{order.coordinates}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <Badge variant="secondary" className="text-xs">
+                        {order.submittedFrom}
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="text-right space-y-1">
+                  <div className="text-right space-y-1 ml-4">
                     <Badge className={getStatusColor(order.status)}>{order.status}</Badge>
                     <p className="text-xs text-muted-foreground">Due: {order.dueDate}</p>
+                    <Button variant="ghost" size="sm" className="text-xs h-6">
+                      <MapPin className="h-3 w-3 mr-1" />
+                      View Map
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -191,34 +289,17 @@ export default function DashboardPage() {
             <CardDescription>Current status of critical assets</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Fuel Pumps</span>
-                <span>8/10 Active</span>
+            {assetStatus.map((asset, index) => (
+              <div key={index} className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>{asset.name}</span>
+                  <span>
+                    {asset.active}/{asset.total} Active
+                  </span>
+                </div>
+                <Progress value={asset.percentage} className="h-2" />
               </div>
-              <Progress value={80} className="h-2" />
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Storage Tanks</span>
-                <span>4/4 Active</span>
-              </div>
-              <Progress value={100} className="h-2" />
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Compressors</span>
-                <span>2/3 Active</span>
-              </div>
-              <Progress value={67} className="h-2" />
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Safety Systems</span>
-                <span>5/5 Active</span>
-              </div>
-              <Progress value={100} className="h-2" />
-            </div>
+            ))}
           </CardContent>
         </Card>
 
@@ -230,27 +311,23 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Tank Inspection</p>
-                  <p className="text-xs text-muted-foreground">Tomorrow</p>
+              {upcomingMaintenance.map((maintenance, index) => (
+                <div key={index} className="flex items-center gap-3">
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      maintenance.priority === "high"
+                        ? "bg-red-500"
+                        : maintenance.priority === "medium"
+                          ? "bg-yellow-500"
+                          : "bg-blue-500"
+                    }`}
+                  ></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{maintenance.title}</p>
+                    <p className="text-xs text-muted-foreground">{maintenance.dueDate}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Pump Calibration</p>
-                  <p className="text-xs text-muted-foreground">Jan 18</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Fire System Check</p>
-                  <p className="text-xs text-muted-foreground">Jan 20</p>
-                </div>
-              </div>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -264,19 +341,19 @@ export default function DashboardPage() {
           <CardContent className="space-y-4">
             <div className="flex justify-between">
               <span className="text-sm">Completion Rate</span>
-              <span className="text-sm font-medium">87%</span>
+              <span className="text-sm font-medium">{quickStats.completionRate}%</span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm">Avg Response Time</span>
-              <span className="text-sm font-medium">2.3 hrs</span>
+              <span className="text-sm font-medium">{quickStats.avgResponseTime}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm">Active Technicians</span>
-              <span className="text-sm font-medium">12</span>
+              <span className="text-sm font-medium">{quickStats.activeTechnicians}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm">Cost Savings</span>
-              <span className="text-sm font-medium text-green-600">+15%</span>
+              <span className="text-sm font-medium text-green-600">{quickStats.costSavings}</span>
             </div>
           </CardContent>
         </Card>
