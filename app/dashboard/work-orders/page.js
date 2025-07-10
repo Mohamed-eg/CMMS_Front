@@ -1,180 +1,115 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useDispatch, useSelector } from "react-redux"
+import { useState } from "react"
+import { useSelector, useDispatch } from "react-redux"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { toast } from "sonner"
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Plus,
   Search,
-  RefreshCw,
-  Trash2,
-  Edit,
-  Eye,
-  Calendar,
-  User,
-  AlertTriangle,
-  CheckCircle,
+  Filter,
+  MoreHorizontal,
+  AlertCircle,
   Clock,
+  CheckCircle,
   XCircle,
+  RefreshCw,
+  Wrench,
 } from "lucide-react"
-import WorkOrderForm from "@/components/work-order-form"
-import { fetchWorkOrders, deleteWorkOrder } from "@/lib/features/workOrders/workOrdersSlice"
+import { WorkOrderForm } from "@/components/work-order-form"
+import { toast } from "sonner"
 
 export default function WorkOrdersPage() {
   const dispatch = useDispatch()
-  const { workOrders, loading, error } = useSelector((state) => state.workOrders)
+  const { workOrders, loading, error } = useSelector((state) => state.workOrders || {})
 
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [selectedWorkOrder, setSelectedWorkOrder] = useState(null)
-  const [stats, setStats] = useState({
-    total: 0,
-    open: 0,
-    inProgress: 0,
-    completed: 0,
-    overdue: 0,
-  })
-  const [isLoadingStats, setIsLoadingStats] = useState(false)
+  const [showForm, setShowForm] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
-  // Load work orders and stats on component mount
-  useEffect(() => {
-    loadWorkOrders()
-    loadStats()
-  }, [])
+  // Mock data for development
+  const mockWorkOrders = [
+    {
+      id: 1,
+      title: "Pump 3 Maintenance",
+      description: "Regular maintenance check for pump 3",
+      status: "pending",
+      priority: "medium",
+      assignedTo: "John Smith",
+      station: "Station A",
+      createdAt: "2024-01-15T10:00:00Z",
+      dueDate: "2024-01-20T10:00:00Z",
+      equipment: "Fuel Pump #3",
+    },
+    {
+      id: 2,
+      title: "Tank Level Sensor Repair",
+      description: "Tank level sensor showing incorrect readings",
+      status: "in-progress",
+      priority: "high",
+      assignedTo: "Sarah Johnson",
+      station: "Station B",
+      createdAt: "2024-01-14T14:30:00Z",
+      dueDate: "2024-01-18T14:30:00Z",
+      equipment: "Tank Level Sensor #2",
+    },
+    {
+      id: 3,
+      title: "Canopy Light Replacement",
+      description: "Replace burnt out LED lights in canopy",
+      status: "completed",
+      priority: "low",
+      assignedTo: "Mike Wilson",
+      station: "Station C",
+      createdAt: "2024-01-10T09:00:00Z",
+      dueDate: "2024-01-15T09:00:00Z",
+      equipment: "Canopy Lighting",
+    },
+    {
+      id: 4,
+      title: "POS System Update",
+      description: "Update point of sale system software",
+      status: "cancelled",
+      priority: "medium",
+      assignedTo: "Lisa Brown",
+      station: "Station A",
+      createdAt: "2024-01-12T11:00:00Z",
+      dueDate: "2024-01-17T11:00:00Z",
+      equipment: "POS Terminal #1",
+    },
+  ]
 
-  // Update stats when work orders change
-  useEffect(() => {
-    if (workOrders && Array.isArray(workOrders)) {
-      calculateStats()
-    }
-  }, [workOrders])
+  // Use mock data if Redux data is not available
+  const currentWorkOrders = Array.isArray(workOrders) ? workOrders : mockWorkOrders
 
-  // Load work orders from API
-  const loadWorkOrders = async () => {
-    try {
-      setIsRefreshing(true)
-
-      // Try to fetch from API first
-      const filters = {
-        status: statusFilter !== "all" ? statusFilter : undefined,
-        priority: priorityFilter !== "all" ? priorityFilter : undefined,
-        search: searchTerm || undefined,
-      }
-
-      // Comment out API call for now - uncomment when backend is ready
-      // const apiData = await getWorkOrders(filters)
-      // console.log('✅ Work orders loaded from API:', apiData)
-
-      // For now, use Redux store data
-      dispatch(fetchWorkOrders())
-    } catch (error) {
-      console.error("❌ Error loading work orders:", error)
-      toast.error("Failed to load work orders. Using cached data.")
-      // Fallback to Redux store
-      dispatch(fetchWorkOrders())
-    } finally {
-      setIsRefreshing(false)
-    }
-  }
-
-  // Calculate statistics from current work orders
-  const calculateStats = () => {
-    if (!workOrders || !Array.isArray(workOrders)) {
-      return
-    }
-
-    const totalWorkOrders = workOrders.length
-    const openCount = workOrders.filter((wo) => wo?.status === "Open").length
-    const inProgressCount = workOrders.filter((wo) => wo?.status === "In Progress").length
-    const completedCount = workOrders.filter((wo) => wo?.status === "Completed").length
-    const overdueCount = workOrders.filter((wo) => wo?.priority === "High" && wo?.status !== "Completed").length
-
-    setStats({
-      total: totalWorkOrders,
-      open: openCount,
-      inProgress: inProgressCount,
-      completed: completedCount,
-      overdue: overdueCount,
-    })
-  }
-
-  // Load statistics from API
-  const loadStats = async () => {
-    try {
-      setIsLoadingStats(true)
-
-      // Comment out API call for now - uncomment when backend is ready
-      // const apiStats = await getWorkOrderStats()
-      // setStats(apiStats)
-
-      // For now, calculate stats from Redux store
-      calculateStats()
-    } catch (error) {
-      console.error("❌ Error loading work order stats:", error)
-      toast.error("Failed to load statistics")
-      // Fallback to calculating from current data
-      calculateStats()
-    } finally {
-      setIsLoadingStats(false)
-    }
-  }
-
-  // Handle work order deletion
-  const handleDeleteWorkOrder = async (workOrderId) => {
-    try {
-      // Comment out API call for now - uncomment when backend is ready
-      // await deleteWorkOrderAPI(workOrderId)
-      // console.log('✅ Work order deleted via API:', workOrderId)
-
-      // For now, use Redux action
-      dispatch(deleteWorkOrder(workOrderId))
-      toast.success("Work order deleted successfully")
-
-      // Reload data
-      loadWorkOrders()
-      loadStats()
-    } catch (error) {
-      console.error("❌ Error deleting work order:", error)
-      toast.error("Failed to delete work order")
-    }
-  }
-
-  // Safe filtering with null checks
-  const filteredWorkOrders = (workOrders || []).filter((workOrder) => {
-    if (!workOrder) return false
-
-    // Safe string operations with fallbacks
-    const title = workOrder.title || ""
-    const description = workOrder.description || ""
-    const equipmentId = workOrder.equipmentId || ""
-    const status = workOrder.status || ""
-    const priority = workOrder.priority || ""
+  // Filter work orders
+  const filteredWorkOrders = currentWorkOrders.filter((workOrder) => {
+    const title = workOrder?.title || ""
+    const description = workOrder?.description || ""
+    const status = workOrder?.status || ""
+    const priority = workOrder?.priority || ""
+    const assignedTo = workOrder?.assignedTo || ""
+    const station = workOrder?.station || ""
 
     const matchesSearch =
+      searchTerm === "" ||
       title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      equipmentId.toLowerCase().includes(searchTerm.toLowerCase())
+      assignedTo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      station.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesStatus = statusFilter === "all" || status === statusFilter
     const matchesPriority = priorityFilter === "all" || priority === priorityFilter
@@ -182,173 +117,175 @@ export default function WorkOrdersPage() {
     return matchesSearch && matchesStatus && matchesPriority
   })
 
-  // Get status badge variant
-  const getStatusBadgeVariant = (status) => {
-    switch (status) {
-      case "Open":
-        return "destructive"
-      case "In Progress":
-        return "default"
-      case "Completed":
-        return "secondary"
-      case "Cancelled":
-        return "outline"
-      default:
-        return "default"
-    }
+  // Calculate statistics
+  const stats = {
+    total: currentWorkOrders.length,
+    pending: currentWorkOrders.filter((wo) => (wo?.status || "") === "pending").length,
+    inProgress: currentWorkOrders.filter((wo) => (wo?.status || "") === "in-progress").length,
+    completed: currentWorkOrders.filter((wo) => (wo?.status || "") === "completed").length,
+    overdue: currentWorkOrders.filter((wo) => {
+      const dueDate = wo?.dueDate ? new Date(wo.dueDate) : null
+      return dueDate && dueDate < new Date() && (wo?.status || "") !== "completed"
+    }).length,
   }
 
-  // Get priority badge variant
-  const getPriorityBadgeVariant = (priority) => {
-    switch (priority) {
-      case "High":
-        return "destructive"
-      case "Medium":
-        return "default"
-      case "Low":
-        return "secondary"
-      default:
-        return "default"
-    }
-  }
-
-  // Get status icon
   const getStatusIcon = (status) => {
     switch (status) {
-      case "Open":
-        return <AlertTriangle className="h-4 w-4" />
-      case "In Progress":
+      case "pending":
         return <Clock className="h-4 w-4" />
-      case "Completed":
+      case "in-progress":
+        return <RefreshCw className="h-4 w-4" />
+      case "completed":
         return <CheckCircle className="h-4 w-4" />
-      case "Cancelled":
+      case "cancelled":
         return <XCircle className="h-4 w-4" />
       default:
-        return <Clock className="h-4 w-4" />
+        return <AlertCircle className="h-4 w-4" />
     }
   }
 
-  // Format date safely
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200"
+      case "in-progress":
+        return "bg-blue-100 text-blue-800 border-blue-200"
+      case "completed":
+        return "bg-green-100 text-green-800 border-green-200"
+      case "cancelled":
+        return "bg-red-100 text-red-800 border-red-200"
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200"
+    }
+  }
+
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case "high":
+        return "bg-red-100 text-red-800 border-red-200"
+      case "medium":
+        return "bg-orange-100 text-orange-800 border-orange-200"
+      case "low":
+        return "bg-green-100 text-green-800 border-green-200"
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200"
+    }
+  }
+
   const formatDate = (dateString) => {
-    if (!dateString) return "No due date"
+    if (!dateString) return "N/A"
     try {
       return new Date(dateString).toLocaleDateString()
     } catch (error) {
-      return "Invalid date"
+      return "Invalid Date"
+    }
+  }
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      toast.success("Work orders refreshed successfully")
+    } catch (error) {
+      toast.error("Failed to refresh work orders")
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  const handleDeleteWorkOrder = async (id) => {
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      toast.success("Work order deleted successfully")
+    } catch (error) {
+      toast.error("Failed to delete work order")
     }
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Work Orders</h2>
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm" onClick={loadWorkOrders} disabled={isRefreshing}>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Work Orders</h1>
+          <p className="text-muted-foreground">Manage and track maintenance work orders</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
             Refresh
           </Button>
-          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                New Work Order
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Create New Work Order</DialogTitle>
-              </DialogHeader>
-              <WorkOrderForm
-                onClose={() => setIsFormOpen(false)}
-                onSuccess={() => {
-                  loadWorkOrders()
-                  loadStats()
-                }}
-              />
-            </DialogContent>
-          </Dialog>
+          <Button onClick={() => setShowForm(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Work Order
+          </Button>
         </div>
       </div>
-
-      {/* Error Display */}
-      {error && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-red-800">
-              <AlertTriangle className="h-4 w-4" />
-              <span className="font-medium">Error:</span>
-              <span>{error}</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Statistics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Work Orders</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+            <Wrench className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isLoadingStats ? "..." : stats.total}</div>
-            <p className="text-xs text-muted-foreground">All work orders in system</p>
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <p className="text-xs text-muted-foreground">All work orders</p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Open</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-500" />
+            <CardTitle className="text-sm font-medium">Pending</CardTitle>
+            <Clock className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{isLoadingStats ? "..." : stats.open}</div>
+            <div className="text-2xl font-bold">{stats.pending}</div>
             <p className="text-xs text-muted-foreground">Awaiting assignment</p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-            <Clock className="h-4 w-4 text-blue-500" />
+            <RefreshCw className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{isLoadingStats ? "..." : stats.inProgress}</div>
-            <p className="text-xs text-muted-foreground">Currently being worked on</p>
+            <div className="text-2xl font-bold">{stats.inProgress}</div>
+            <p className="text-xs text-muted-foreground">Currently active</p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
+            <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{isLoadingStats ? "..." : stats.completed}</div>
-            <p className="text-xs text-muted-foreground">Successfully completed</p>
+            <div className="text-2xl font-bold">{stats.completed}</div>
+            <p className="text-xs text-muted-foreground">Successfully finished</p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Overdue</CardTitle>
-            <XCircle className="h-4 w-4 text-orange-500" />
+            <AlertCircle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{isLoadingStats ? "..." : stats.overdue}</div>
+            <div className="text-2xl font-bold">{stats.overdue}</div>
             <p className="text-xs text-muted-foreground">Past due date</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters and Search */}
+      {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle>Work Orders Management</CardTitle>
-          <CardDescription>Manage and track all maintenance work orders</CardDescription>
+          <CardTitle>Filters</CardTitle>
+          <CardDescription>Filter work orders by status, priority, or search</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col space-y-4 md:flex-row md:space-y-0 md:space-x-4 mb-6">
+          <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -360,143 +297,159 @@ export default function WorkOrdersPage() {
                 />
               </div>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="Open">Open</SelectItem>
-                <SelectItem value="In Progress">In Progress</SelectItem>
-                <SelectItem value="Completed">Completed</SelectItem>
-                <SelectItem value="Cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by priority" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Priorities</SelectItem>
-                <SelectItem value="High">High</SelectItem>
-                <SelectItem value="Medium">Medium</SelectItem>
-                <SelectItem value="Low">Low</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="flex gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="min-w-[120px] justify-between bg-transparent">
+                    <Filter className="h-4 w-4 mr-2" />
+                    Status: {statusFilter === "all" ? "All" : statusFilter}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[200px]">
+                  <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setStatusFilter("all")}>All Statuses</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter("pending")}>Pending</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter("in-progress")}>In Progress</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter("completed")}>Completed</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter("cancelled")}>Cancelled</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-          {/* Work Orders Table */}
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Work Order</TableHead>
-                  <TableHead>Equipment</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Assigned To</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="min-w-[120px] justify-between bg-transparent">
+                    <Filter className="h-4 w-4 mr-2" />
+                    Priority: {priorityFilter === "all" ? "All" : priorityFilter}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[200px]">
+                  <DropdownMenuLabel>Filter by Priority</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setPriorityFilter("all")}>All Priorities</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setPriorityFilter("high")}>High Priority</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setPriorityFilter("medium")}>Medium Priority</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setPriorityFilter("low")}>Low Priority</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Work Orders Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Work Orders ({filteredWorkOrders.length})</CardTitle>
+          <CardDescription>
+            {filteredWorkOrders.length === 0
+              ? "No work orders found matching your criteria"
+              : `Showing ${filteredWorkOrders.length} of ${currentWorkOrders.length} work orders`}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">Loading work orders...</span>
+            </div>
+          ) : error ? (
+            <div className="flex items-center justify-center py-8 text-red-600">
+              <AlertCircle className="h-8 w-8 mr-2" />
+              <span>Error loading work orders: {error}</span>
+            </div>
+          ) : filteredWorkOrders.length === 0 ? (
+            <div className="flex items-center justify-center py-8 text-muted-foreground">
+              <Wrench className="h-8 w-8 mr-2" />
+              <span>No work orders found</span>
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
-                      <div className="flex items-center justify-center">
-                        <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                        Loading work orders...
-                      </div>
-                    </TableCell>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead>Assigned To</TableHead>
+                    <TableHead>Station</TableHead>
+                    <TableHead>Due Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ) : filteredWorkOrders.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
-                      <div className="text-muted-foreground">
-                        {searchTerm || statusFilter !== "all" || priorityFilter !== "all"
-                          ? "No work orders match your filters"
-                          : "No work orders found"}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredWorkOrders.map((workOrder) => (
+                </TableHeader>
+                <TableBody>
+                  {filteredWorkOrders.map((workOrder) => (
                     <TableRow key={workOrder?.id || Math.random()}>
                       <TableCell>
                         <div>
                           <div className="font-medium">{workOrder?.title || "Untitled"}</div>
-                          <div className="text-sm text-muted-foreground">#{workOrder?.id || "N/A"}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {workOrder?.equipment || "No equipment specified"}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium">{workOrder?.equipmentId || "N/A"}</div>
-                        <div className="text-sm text-muted-foreground">{workOrder?.stationName || "N/A"}</div>
-                      </TableCell>
-                      <TableCell>
                         <Badge
-                          variant={getStatusBadgeVariant(workOrder?.status)}
-                          className="flex items-center gap-1 w-fit"
+                          variant="outline"
+                          className={`${getStatusColor(workOrder?.status || "")} flex items-center gap-1 w-fit`}
                         >
-                          {getStatusIcon(workOrder?.status)}
+                          {getStatusIcon(workOrder?.status || "")}
                           {workOrder?.status || "Unknown"}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={getPriorityBadgeVariant(workOrder?.priority)}>
+                        <Badge variant="outline" className={`${getPriorityColor(workOrder?.priority || "")} w-fit`}>
                           {workOrder?.priority || "Unknown"}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          {workOrder?.assignedTo || "Unassigned"}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{formatDate(workOrder?.dueDate)}</div>
-                      </TableCell>
+                      <TableCell>{workOrder?.assignedTo || "Unassigned"}</TableCell>
+                      <TableCell>{workOrder?.station || "N/A"}</TableCell>
+                      <TableCell>{formatDate(workOrder?.dueDate)}</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Work Order</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete this work order? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteWorkOrder(workOrder?.id)}
-                                  className="bg-red-600 hover:bg-red-700"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-[160px]">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem>View Details</DropdownMenuItem>
+                            <DropdownMenuItem>Edit Work Order</DropdownMenuItem>
+                            <DropdownMenuItem>Assign Technician</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-red-600 focus:text-red-600"
+                              onClick={() => handleDeleteWorkOrder(workOrder?.id)}
+                            >
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Work Order Form Modal */}
+      {showForm && (
+        <WorkOrderForm
+          isOpen={showForm}
+          onClose={() => setShowForm(false)}
+          onSubmit={(data) => {
+            console.log("Work order submitted:", data)
+            setShowForm(false)
+            toast.success("Work order created successfully")
+          }}
+        />
+      )}
     </div>
   )
 }

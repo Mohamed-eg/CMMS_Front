@@ -67,7 +67,7 @@ export default function DashboardLayout({ children }) {
                 {user.fullName}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 z-50" sideOffset={5}>
+            <DropdownMenuContent align="end" className="w-56 z-100" sideOffset={5}>
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleProfileClick} className="cursor-pointer">
