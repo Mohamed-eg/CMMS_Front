@@ -64,7 +64,7 @@ export default function DashboardLayout({ children }) {
                 onClick={() => setIsOpen(!isOpen)}
               >
                 <User className="h-4 w-4" />
-                {user.name}
+                {user.fullName}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 z-50" sideOffset={5}>
