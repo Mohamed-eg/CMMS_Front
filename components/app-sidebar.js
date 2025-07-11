@@ -1,5 +1,6 @@
 "use client"
 import { usePathname } from "next/navigation"
+import Link from "next/link"
 import {
   Sidebar,
   SidebarContent,
@@ -13,8 +14,6 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +22,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import {
   LayoutDashboard,
   Wrench,
@@ -31,108 +32,105 @@ import {
   FileText,
   Calendar,
   Settings,
-  HelpCircle,
-  LogOut,
+  BarChart3,
   User,
+  LogOut,
   Bell,
   ChevronUp,
   Fuel,
-  BarChart3,
+  Shield,
+  Activity,
 } from "lucide-react"
 
-// Navigation data
-const data = {
-  user: {
-    name: "Ahmed Al-Rashid",
-    email: "ahmed@gasstation.com",
-    avatar: "/placeholder-user.jpg",
-    role: "Station Manager",
-    status: "online",
+// Navigation items
+const navigationItems = [
+  {
+    title: "Overview",
+    items: [
+      {
+        title: "Dashboard",
+        url: "/dashboard",
+        icon: LayoutDashboard,
+        description: "Main overview and statistics",
+        badge: null,
+      },
+      {
+        title: "Analytics",
+        url: "/dashboard/reports",
+        icon: BarChart3,
+        description: "Performance metrics and insights",
+        badge: null,
+      },
+    ],
   },
-  navMain: [
-    {
-      title: "Overview",
-      items: [
-        {
-          title: "Dashboard",
-          url: "/dashboard",
-          icon: LayoutDashboard,
-          description: "Main overview and analytics",
-          isActive: true,
-        },
-        {
-          title: "Station Details",
-          url: "/dashboard/station-details",
-          icon: Building2,
-          description: "Station information and status",
-        },
-      ],
-    },
-    {
-      title: "Operations",
-      items: [
-        {
-          title: "Work Orders",
-          url: "/dashboard/work-orders",
-          icon: Wrench,
-          description: "Maintenance and repair tasks",
-          badge: "12",
-        },
-        {
-          title: "Assets",
-          url: "/dashboard/assets",
-          icon: Fuel,
-          description: "Equipment and asset management",
-        },
-        {
-          title: "Calendar",
-          url: "/dashboard/calendar",
-          icon: Calendar,
-          description: "Scheduled maintenance and events",
-        },
-      ],
-    },
-    {
-      title: "Management",
-      items: [
-        {
-          title: "Users",
-          url: "/dashboard/users",
-          icon: Users,
-          description: "Staff and user management",
-        },
-        {
-          title: "Reports",
-          url: "/dashboard/reports",
-          icon: FileText,
-          description: "Analytics and reporting",
-        },
-        {
-          title: "Maintenance Reports",
-          url: "/dashboard/maintenance-reports",
-          icon: BarChart3,
-          description: "Maintenance analytics",
-        },
-      ],
-    },
-    {
-      title: "System",
-      items: [
-        {
-          title: "Settings",
-          url: "/dashboard/settings",
-          icon: Settings,
-          description: "System configuration",
-        },
-        {
-          title: "Help & Support",
-          url: "/dashboard/help",
-          icon: HelpCircle,
-          description: "Documentation and support",
-        },
-      ],
-    },
-  ],
+  {
+    title: "Operations",
+    items: [
+      {
+        title: "Work Orders",
+        url: "/dashboard/work-orders",
+        icon: Wrench,
+        description: "Maintenance requests and tasks",
+        badge: { count: 12, variant: "destructive" },
+      },
+      {
+        title: "Assets",
+        url: "/dashboard/assets",
+        icon: Fuel,
+        description: "Equipment and infrastructure",
+        badge: null,
+      },
+      {
+        title: "Stations",
+        url: "/dashboard/station-details",
+        icon: Building2,
+        description: "Gas station locations",
+        badge: null,
+      },
+      {
+        title: "Calendar",
+        url: "/dashboard/calendar",
+        icon: Calendar,
+        description: "Scheduled maintenance",
+        badge: { count: 3, variant: "secondary" },
+      },
+    ],
+  },
+  {
+    title: "Management",
+    items: [
+      {
+        title: "Users",
+        url: "/dashboard/users",
+        icon: Users,
+        description: "Team and access management",
+        badge: null,
+      },
+      {
+        title: "Reports",
+        url: "/dashboard/maintenance-reports",
+        icon: FileText,
+        description: "Maintenance documentation",
+        badge: null,
+      },
+      {
+        title: "Settings",
+        url: "/dashboard/settings",
+        icon: Settings,
+        description: "System configuration",
+        badge: null,
+      },
+    ],
+  },
+]
+
+// User data (this would come from auth context in a real app)
+const userData = {
+  name: "Ahmed Al-Rashid",
+  email: "ahmed.rashid@cmms.sa",
+  role: "Maintenance Manager",
+  avatar: "/placeholder-user.jpg",
+  status: "online",
 }
 
 export function AppSidebar({ ...props }) {
@@ -140,14 +138,15 @@ export function AppSidebar({ ...props }) {
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
-        <div className="flex items-center gap-3 px-3 py-2">
-          {/* Company Logo */}
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg">
-            <Fuel className="h-5 w-5" />
+      <SidebarHeader className="border-b border-sidebar-border bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
+        <div className="flex items-center gap-3 px-3 py-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg">
+            <Shield className="h-5 w-5" />
           </div>
-          <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-            <div className="text-sm font-semibold text-foreground">CMMS Gas Station</div>
+          <div className="flex flex-col">
+            <span className="text-lg font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              CMMS Pro
+            </span>
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
               <span className="text-xs text-muted-foreground">System Online</span>
@@ -156,10 +155,10 @@ export function AppSidebar({ ...props }) {
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
-        {data.navMain.map((group) => (
+      <SidebarContent className="bg-gradient-to-b from-white to-gray-50/50 dark:from-gray-900 dark:to-gray-950/50">
+        {navigationItems.map((group) => (
           <SidebarGroup key={group.title}>
-            <SidebarGroupLabel className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wider">
+            <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-wider px-3">
               {group.title}
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -172,47 +171,66 @@ export function AppSidebar({ ...props }) {
                         asChild
                         isActive={isActive}
                         className={`
-                          relative group transition-all duration-300 ease-in-out
-                          hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50
-                          hover:border-l-4 hover:border-l-blue-500
-                          hover:shadow-sm hover:scale-[1.02]
+                          group relative transition-all duration-300 ease-in-out
+                          hover:scale-[1.02] hover:shadow-sm
                           ${
                             isActive
-                              ? "bg-gradient-to-r from-blue-100 to-indigo-100 border-l-4 border-l-blue-600 shadow-md text-blue-900 font-medium"
-                              : "hover:text-blue-700"
+                              ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md border-l-4 border-l-blue-600"
+                              : "hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-950 dark:hover:to-indigo-950"
                           }
                         `}
                       >
-                        <a href={item.url} className="flex items-center gap-3 w-full">
+                        <Link href={item.url} className="flex items-center gap-3 w-full">
                           <div
                             className={`
                               flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-300
                               ${
                                 isActive
-                                  ? "bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg"
-                                  : "bg-muted/50 text-muted-foreground group-hover:bg-blue-100 group-hover:text-blue-600"
+                                  ? "bg-white/20 text-white shadow-inner"
+                                  : "bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600 group-hover:from-blue-100 group-hover:to-indigo-100 group-hover:text-blue-600 dark:from-gray-800 dark:to-gray-700 dark:text-gray-400"
                               }
                             `}
                           >
                             <item.icon className="h-4 w-4" />
                           </div>
-                          <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium">{item.title}</span>
+                          <div className="flex flex-col flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span
+                                className={`
+                                  font-medium text-sm truncate
+                                  ${isActive ? "text-white" : "text-gray-900 dark:text-gray-100"}
+                                `}
+                              >
+                                {item.title}
+                              </span>
                               {item.badge && (
                                 <Badge
-                                  variant="secondary"
-                                  className="h-5 px-1.5 text-xs bg-blue-100 text-blue-700 hover:bg-blue-200"
+                                  variant={item.badge.variant}
+                                  className={`
+                                    ml-2 h-5 px-1.5 text-xs font-medium
+                                    ${
+                                      isActive
+                                        ? "bg-white/20 text-white border-white/30"
+                                        : item.badge.variant === "destructive"
+                                          ? "bg-red-100 text-red-700 border-red-200"
+                                          : "bg-gray-100 text-gray-600 border-gray-200"
+                                    }
+                                  `}
                                 >
-                                  {item.badge}
+                                  {item.badge.count}
                                 </Badge>
                               )}
                             </div>
-                            <span className="text-xs text-muted-foreground group-hover:text-blue-600/70">
+                            <span
+                              className={`
+                                text-xs truncate transition-opacity duration-300
+                                ${isActive ? "text-white/80" : "text-muted-foreground group-hover:text-blue-600/80"}
+                              `}
+                            >
                               {item.description}
                             </span>
                           </div>
-                        </a>
+                        </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   )
@@ -223,76 +241,86 @@ export function AppSidebar({ ...props }) {
         ))}
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="border-t border-sidebar-border bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-950">
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
                   size="lg"
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300"
+                  className="group hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-950 dark:hover:to-indigo-950 transition-all duration-300 hover:scale-[1.02] hover:shadow-sm"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 w-full">
                     <div className="relative">
-                      <Avatar className="h-8 w-8 border-2 border-blue-200">
-                        <AvatarImage src={data.user.avatar || "/placeholder.svg"} alt={data.user.name} />
-                        <AvatarFallback className="bg-gradient-to-br from-blue-600 to-blue-700 text-white text-sm font-medium">
-                          {data.user.name
+                      <Avatar className="h-10 w-10 border-2 border-white shadow-md">
+                        <AvatarImage src={userData.avatar || "/placeholder.svg"} alt={userData.name} />
+                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white font-semibold">
+                          {userData.name
                             .split(" ")
                             .map((n) => n[0])
                             .join("")}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500 border-2 border-background"></div>
+                      <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-green-500 border-2 border-white shadow-sm animate-pulse"></div>
                     </div>
-                    <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                      <span className="truncate font-semibold">{data.user.name}</span>
-                      <span className="truncate text-xs text-muted-foreground">{data.user.role}</span>
+                    <div className="flex flex-col flex-1 min-w-0 text-left">
+                      <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
+                        {userData.name}
+                      </span>
+                      <span className="text-xs text-muted-foreground truncate">{userData.role}</span>
                     </div>
+                    <ChevronUp className="h-4 w-4 text-muted-foreground group-hover:text-blue-600 transition-colors duration-300" />
                   </div>
-                  <ChevronUp className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-                side="bottom"
+                className="w-64 p-2 bg-white/95 backdrop-blur-sm border border-gray-200 shadow-xl"
+                side="top"
                 align="end"
-                sideOffset={4}
+                sideOffset={8}
               >
-                <DropdownMenuLabel className="p-0 font-normal">
-                  <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={data.user.avatar || "/placeholder.svg"} alt={data.user.name} />
-                      <AvatarFallback className="bg-gradient-to-br from-blue-600 to-blue-700 text-white">
-                        {data.user.name
+                <DropdownMenuLabel className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg mb-2">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-12 w-12 border-2 border-white shadow-md">
+                      <AvatarImage src={userData.avatar || "/placeholder.svg"} alt={userData.name} />
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white font-semibold">
+                        {userData.name
                           .split(" ")
                           .map((n) => n[0])
                           .join("")}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">{data.user.name}</span>
-                      <span className="truncate text-xs text-muted-foreground">{data.user.email}</span>
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-gray-900">{userData.name}</span>
+                      <span className="text-sm text-muted-foreground">{userData.email}</span>
+                      <Badge variant="secondary" className="w-fit mt-1 text-xs">
+                        {userData.role}
+                      </Badge>
                     </div>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="hover:bg-blue-50 cursor-pointer">
-                  <User className="mr-2 h-4 w-4" />
-                  <a href="/dashboard/profile">Profile</a>
+                <DropdownMenuItem className="flex items-center gap-3 p-3 hover:bg-blue-50 transition-colors duration-200">
+                  <User className="h-4 w-4 text-blue-600" />
+                  <Link href="/dashboard/profile" className="flex-1">
+                    Profile Settings
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem className="hover:bg-blue-50 cursor-pointer">
-                  <Bell className="mr-2 h-4 w-4" />
-                  Notifications
+                <DropdownMenuItem className="flex items-center gap-3 p-3 hover:bg-blue-50 transition-colors duration-200">
+                  <Bell className="h-4 w-4 text-blue-600" />
+                  <span className="flex-1">Notifications</span>
+                  <Badge variant="destructive" className="h-5 px-1.5 text-xs">
+                    3
+                  </Badge>
                 </DropdownMenuItem>
-                <DropdownMenuItem className="hover:bg-blue-50 cursor-pointer">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
+                <DropdownMenuItem className="flex items-center gap-3 p-3 hover:bg-blue-50 transition-colors duration-200">
+                  <Activity className="h-4 w-4 text-blue-600" />
+                  <span className="flex-1">Activity Log</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="hover:bg-red-50 text-red-600 cursor-pointer">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Log out
+                <DropdownMenuItem className="flex items-center gap-3 p-3 hover:bg-red-50 text-red-600 transition-colors duration-200">
+                  <LogOut className="h-4 w-4" />
+                  <span className="flex-1">Sign Out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -300,16 +328,17 @@ export function AppSidebar({ ...props }) {
         </SidebarMenu>
 
         {/* System Status */}
-        <div className="px-3 py-2 group-data-[collapsible=icon]:hidden">
+        <div className="px-3 py-2">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Version 2.1.0</span>
             <div className="flex items-center gap-1">
-              <div className="h-1.5 w-1.5 rounded-full bg-green-500"></div>
+              <div className="h-2 w-2 rounded-full bg-green-500"></div>
               <span>Online</span>
             </div>
           </div>
         </div>
       </SidebarFooter>
+
       <SidebarRail />
     </Sidebar>
   )
