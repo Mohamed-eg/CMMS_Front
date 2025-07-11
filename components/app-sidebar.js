@@ -1,6 +1,7 @@
 "use client"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   Sidebar,
   SidebarContent,
@@ -41,6 +42,7 @@ import {
   Shield,
   Activity,
 } from "lucide-react"
+import { use, useEffect,useState } from "react"
 
 // Navigation items
 const navigationItems = [
@@ -125,26 +127,34 @@ const navigationItems = [
 ]
 
 // User data (this would come from auth context in a real app)
-const userData = {
-  name: "Ahmed Al-Rashid",
-  email: "ahmed.rashid@cmms.sa",
-  role: "Maintenance Manager",
-  avatar: "/placeholder-user.jpg",
-  status: "online",
-}
-
 export function AppSidebar({ ...props }) {
+  const router = useRouter()
+  const [userData,setUser] = useState({
+    fullName: "Ahmed Al-Rashid",
+    email: "ahmed.rashid@cmms.sa",
+    role: "Maintenance Manager",
+    avatar: "/placeholder-user.jpg",
+    status: "online",
+  })
+  useEffect(() => {
+    const userData = localStorage.getItem("user")
+    if (!userData) {
+      router.push("/login")
+    } else {
+      setUser(JSON.parse(userData))
+    }
+  }, [router])
   const pathname = usePathname()
 
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader className="border-b border-sidebar-border bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
-        <div className="flex items-center gap-3 px-3 py-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg">
+        <div className={`${props.isOpen?"justify-center":null} flex items-center  gap-3 px-3 py-4`}>
+          <div className={`${props.isOpen?"px-3":null} flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg`}>
             <Shield className="h-5 w-5" />
           </div>
-          <div className="flex flex-col">
-            <span className="text-lg font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          <div className={`flex flex-col ${props.isOpen?"hidden":null}`}>
+            <span className={`text-lg font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent`}>
               CMMS Pro
             </span>
             <div className="flex items-center gap-2">
@@ -166,24 +176,27 @@ export function AppSidebar({ ...props }) {
                 {group.items.map((item) => {
                   const isActive = pathname === item.url
                   return (
-                    <SidebarMenuItem key={item.title}>
+                    <SidebarMenuItem key={item.title}
+                     className={`${props.isOpen?"justify-center":null}`}>
                       <SidebarMenuButton
                         asChild
                         isActive={isActive}
                         className={`
                           group relative transition-all duration-300 ease-in-out
                           hover:scale-[1.02] hover:shadow-sm
+                          ${props.isOpen?"justify-center":null}
                           ${
                             isActive
-                              ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md border-l-4 border-l-blue-600"
+                              ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md border-l-4 border-l-blue-600"
                               : "hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-950 dark:hover:to-indigo-950"
                           }
                         `}
                       >
-                        <Link href={item.url} className="flex items-center gap-3 w-full">
+                        <Link href={item.url} className={`flex items-center ${props.isOpen?"!justify-center":null} gap-3 w-full`}>
                           <div
                             className={`
-                              flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-300
+                              flex  items-center justify-center rounded-lg transition-all duration-300
+                              ${props.isOpen?"p-3":"!w-8 h-8"}
                               ${
                                 isActive
                                   ? "bg-white/20 text-white shadow-inner"
@@ -191,7 +204,7 @@ export function AppSidebar({ ...props }) {
                               }
                             `}
                           >
-                            <item.icon className="h-4 w-4" />
+                            <item.icon className={`h-4 w-4 ${props.isOpen?"":null}` } />
                           </div>
                           <div className="flex flex-col flex-1 min-w-0">
                             <div className="flex items-center justify-between">
@@ -253,9 +266,9 @@ export function AppSidebar({ ...props }) {
                   <div className="flex items-center gap-3 w-full">
                     <div className="relative">
                       <Avatar className="h-10 w-10 border-2 border-white shadow-md">
-                        <AvatarImage src={userData.avatar || "/placeholder.svg"} alt={userData.name} />
+                        <AvatarImage src={userData.avatar || "/placeholder.svg"} alt={userData.fullName} />
                         <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white font-semibold">
-                          {userData.name
+                          {userData.fullName
                             .split(" ")
                             .map((n) => n[0])
                             .join("")}
@@ -265,9 +278,9 @@ export function AppSidebar({ ...props }) {
                     </div>
                     <div className="flex flex-col flex-1 min-w-0 text-left">
                       <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
-                        {userData.name}
+                        {userData.fullName}
                       </span>
-                      <span className="text-xs text-muted-foreground truncate">{userData.role}</span>
+                      <span className="text-xs text-muted-foreground truncate">{userData.role || "user"}</span>
                     </div>
                     <ChevronUp className="h-4 w-4 text-muted-foreground group-hover:text-blue-600 transition-colors duration-300" />
                   </div>
@@ -282,16 +295,16 @@ export function AppSidebar({ ...props }) {
                 <DropdownMenuLabel className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg mb-2">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-12 w-12 border-2 border-white shadow-md">
-                      <AvatarImage src={userData.avatar || "/placeholder.svg"} alt={userData.name} />
+                      <AvatarImage src={userData.avatar || "/placeholder.svg"} alt={userData.fullName} />
                       <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white font-semibold">
-                        {userData.name
+                        {userData.fullName
                           .split(" ")
                           .map((n) => n[0])
                           .join("")}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
-                      <span className="font-semibold text-gray-900">{userData.name}</span>
+                      <span className="font-semibold text-gray-900">{userData.fullName}</span>
                       <span className="text-sm text-muted-foreground">{userData.email}</span>
                       <Badge variant="secondary" className="w-fit mt-1 text-xs">
                         {userData.role}
@@ -328,7 +341,7 @@ export function AppSidebar({ ...props }) {
         </SidebarMenu>
 
         {/* System Status */}
-        <div className="px-3 py-2">
+        <div className={`${props.isOpen?"hidden":null} px-3 py-2`}>
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Version 2.1.0</span>
             <div className="flex items-center gap-1">
