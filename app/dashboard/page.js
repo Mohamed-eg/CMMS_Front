@@ -14,6 +14,7 @@ import {
   Plus,
   MapPin,
   Loader2,
+  RefreshCw,
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { toast } from "sonner"
@@ -47,6 +48,14 @@ export default function DashboardPage() {
       value: "34",
       change: "-3%",
       trend: "down",
+      icon: RefreshCw,
+      color: "bg-blue-400",
+    },
+    {
+      title: "Pending",
+      value: "12",
+      change: "+2",
+      trend: "up",
       icon: Clock,
       color: "bg-yellow-500",
     },
