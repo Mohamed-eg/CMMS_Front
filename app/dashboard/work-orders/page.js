@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSelector, useDispatch } from "react-redux"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -29,11 +29,11 @@ import {
 } from "lucide-react"
 import { WorkOrderForm } from "@/components/work-order-form"
 import { toast } from "sonner"
+import { fetchWorkOrders } from "@/lib/features/workOrders/workOrdersSlice"
 
 export default function WorkOrdersPage() {
   const dispatch = useDispatch()
   const { workOrders, loading, error } = useSelector((state) => state.workOrders || {})
-
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
@@ -92,6 +92,9 @@ export default function WorkOrdersPage() {
     },
   ]
 
+  useEffect(() => {
+    dispatch(fetchWorkOrders())
+  }, [dispatch])
   // Use mock data if Redux data is not available
   const currentWorkOrders = Array.isArray(workOrders) ? workOrders : mockWorkOrders
 
@@ -379,7 +382,7 @@ export default function WorkOrdersPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredWorkOrders.map((workOrder) => (
-                    <TableRow key={workOrder?.id || Math.random()}>
+                    <TableRow key={workOrder?._id || Math.random()}>
                       <TableCell>
                         <div>
                           <div className="font-medium">{workOrder?.title || "Untitled"}</div>
