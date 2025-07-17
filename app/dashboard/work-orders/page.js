@@ -29,7 +29,8 @@ import {
 } from "lucide-react"
 import { WorkOrderForm } from "@/components/work-order-form"
 import { toast } from "sonner"
-import { fetchWorkOrders } from "@/lib/features/workOrders/workOrdersSlice"
+import { fetchWorkOrders, deleteWorkOrders } from "@/lib/features/workOrders/workOrdersSlice"
+//import { buildApiUrl, getAuthHeaders } from "@/lib/config/api"
 
 export default function WorkOrdersPage() {
   const dispatch = useDispatch()
@@ -43,48 +44,48 @@ export default function WorkOrdersPage() {
   // Mock data for development
   const mockWorkOrders = [
     {
-      id: 1,
+      _id: 1,
       title: "Pump 3 Maintenance",
       description: "Regular maintenance check for pump 3",
       status: "pending",
       priority: "medium",
-      assignedTo: "John Smith",
+      Requested_By: "John Smith",
       station: "Station A",
       createdAt: "2024-01-15T10:00:00Z",
       dueDate: "2024-01-20T10:00:00Z",
       equipment: "Fuel Pump #3",
     },
     {
-      id: 2,
+      _id: 2,
       title: "Tank Level Sensor Repair",
       description: "Tank level sensor showing incorrect readings",
       status: "in-progress",
       priority: "high",
-      assignedTo: "Sarah Johnson",
+      Requested_By: "Sarah Johnson",
       station: "Station B",
       createdAt: "2024-01-14T14:30:00Z",
       dueDate: "2024-01-18T14:30:00Z",
       equipment: "Tank Level Sensor #2",
     },
     {
-      id: 3,
+      _id: 3,
       title: "Canopy Light Replacement",
       description: "Replace burnt out LED lights in canopy",
       status: "completed",
       priority: "low",
-      assignedTo: "Mike Wilson",
+      Requested_By: "Mike Wilson",
       station: "Station C",
       createdAt: "2024-01-10T09:00:00Z",
       dueDate: "2024-01-15T09:00:00Z",
       equipment: "Canopy Lighting",
     },
     {
-      id: 4,
+      _id: 4,
       title: "POS System Update",
       description: "Update point of sale system software",
       status: "cancelled",
       priority: "medium",
-      assignedTo: "Lisa Brown",
+      Requested_By: "Lisa Brown",
       station: "Station A",
       createdAt: "2024-01-12T11:00:00Z",
       dueDate: "2024-01-17T11:00:00Z",
@@ -102,20 +103,20 @@ export default function WorkOrdersPage() {
   const filteredWorkOrders = currentWorkOrders.filter((workOrder) => {
     const title = workOrder?.title || ""
     const description = workOrder?.description || ""
-    const status = workOrder?.status || ""
-    const priority = workOrder?.priority || ""
-    const assignedTo = workOrder?.assignedTo || ""
+    const status = (workOrder?.status || "").toString().toLowerCase()
+    const priority = (workOrder?.priority || "").toString().toLowerCase()
+    const Requested_By = workOrder?.Requested_By || ""
     const station = workOrder?.station || ""
 
     const matchesSearch =
       searchTerm === "" ||
       title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      assignedTo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      Requested_By.toLowerCase().includes(searchTerm.toLowerCase()) ||
       station.toLowerCase().includes(searchTerm.toLowerCase())
 
-    const matchesStatus = statusFilter === "all" || status === statusFilter
-    const matchesPriority = priorityFilter === "all" || priority === priorityFilter
+    const matchesStatus = statusFilter === "all" || status === statusFilter.toLowerCase()
+    const matchesPriority = priorityFilter === "all" || priority === priorityFilter.toLowerCase()
 
     return matchesSearch && matchesStatus && matchesPriority
   })
@@ -187,8 +188,7 @@ export default function WorkOrdersPage() {
   const handleRefresh = async () => {
     setIsRefreshing(true)
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await dispatch(fetchWorkOrders()).unwrap();
       toast.success("Work orders refreshed successfully")
     } catch (error) {
       toast.error("Failed to refresh work orders")
@@ -197,13 +197,12 @@ export default function WorkOrdersPage() {
     }
   }
 
-  const handleDeleteWorkOrder = async (id) => {
+  const handleDeleteWorkOrder = async (_id) => {
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      toast.success("Work order deleted successfully")
+      await dispatch(deleteWorkOrders(_id)).unwrap();
+      toast.success("Work order deleted successfully");
     } catch (error) {
-      toast.error("Failed to delete work order")
+      toast.error("Failed to delete work order");
     }
   }
 
@@ -374,7 +373,7 @@ export default function WorkOrdersPage() {
                     <TableHead>Title</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Priority</TableHead>
-                    <TableHead>Assigned To</TableHead>
+                    <TableHead>Requested By</TableHead>
                     <TableHead>Station</TableHead>
                     <TableHead>Due Date</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -405,7 +404,7 @@ export default function WorkOrdersPage() {
                           {workOrder?.priority || "Unknown"}
                         </Badge>
                       </TableCell>
-                      <TableCell>{workOrder?.assignedTo || "Unassigned"}</TableCell>
+                      <TableCell>{workOrder?.Requested_By || "Unassigned"}</TableCell>
                       <TableCell>{workOrder?.station || "N/A"}</TableCell>
                       <TableCell>{formatDate(workOrder?.dueDate)}</TableCell>
                       <TableCell className="text-right">
@@ -425,7 +424,7 @@ export default function WorkOrdersPage() {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-red-600 focus:text-red-600"
-                              onClick={() => handleDeleteWorkOrder(workOrder?.id)}
+                              onClick={() => handleDeleteWorkOrder(workOrder?._id)}
                             >
                               Delete
                             </DropdownMenuItem>

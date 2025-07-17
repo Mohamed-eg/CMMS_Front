@@ -16,6 +16,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { submitWorkOrder } from "@/lib/features/workOrders/workOrdersSlice"
 import { searchAssets } from "@/lib/api/assets"
 import { toast } from "sonner"
+import { Calendar } from "@/components/ui/calendar"
+import { format } from "date-fns"
 
 // Equipment type icons mapping
 const equipmentIcons = {
@@ -53,16 +55,16 @@ export function WorkOrderForm({ isOpen, onClose }) {
   const [errors, setErrors] = useState({})
 
   const [formData, setFormData] = useState({
-    equipmentId: "",
-    stationName: "",
+    Equipment_ID: "",
+    Station_Name: "",
     issueDescription: "",
     priority: "Medium",
-    requestedBy: "",
-    contactInfo: "",
+    Requested_By: "",
+    Contact_Info: "",
     urgency: "Normal",
-    category: "Maintenance",
     estimatedDuration: "",
     notes: "",
+    dueDate: "",
   })
 
   // Debounced search function
@@ -98,12 +100,12 @@ export function WorkOrderForm({ isOpen, onClose }) {
     setSelectedEquipment(equipment)
     setFormData((prev) => ({
       ...prev,
-      equipmentId: equipment.id,
-      stationName: equipment.station || "",
+      Equipment_ID: equipment.id,
+      Station_Name: equipment.station || "",
     }))
     setShowEquipmentSearch(false)
     setSearchTerm("")
-    setErrors((prev) => ({ ...prev, equipmentId: "" }))
+    setErrors((prev) => ({ ...prev, Equipment_ID: "" }))
   }
 
   // Handle form input changes
@@ -165,11 +167,12 @@ export function WorkOrderForm({ isOpen, onClose }) {
   const validateForm = () => {
     const newErrors = {}
 
-    if (!formData.equipmentId) newErrors.equipmentId = "Equipment selection is required"
-    if (!formData.stationName.trim()) newErrors.stationName = "Station name is required"
+    if (!formData.Equipment_ID) newErrors.Equipment_ID = "Equipment selection is required"
+    if (!formData.Station_Name.trim()) newErrors.Station_Name = "Station name is required"
     if (!formData.issueDescription.trim()) newErrors.issueDescription = "Issue description is required"
-    if (!formData.requestedBy.trim()) newErrors.requestedBy = "Requester name is required"
-    if (!formData.contactInfo.trim()) newErrors.contactInfo = "Contact information is required"
+    if (!formData.Requested_By.trim()) newErrors.Requested_By = "Requester name is required"
+    if (!formData.Contact_Info.trim()) newErrors.Contact_Info = "Contact information is required"
+    if (!formData.dueDate) newErrors.dueDate = "Due date is required"
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -189,17 +192,18 @@ export function WorkOrderForm({ isOpen, onClose }) {
     try {
       const workOrderData = {
         ...formData,
-        equipment: selectedEquipment,
+        Equipment_ID: selectedEquipment?.id || "",
+        title: selectedEquipment?.name || "",
         photos: photos.map((photo) => ({
           name: photo.name,
           size: photo.size,
           url: photo.url,
         })),
-        status: "Open",
+        status: "Pending",
         createdAt: new Date().toISOString(),
         id: `WO-${Date.now()}`,
       }
-
+      console.log(workOrderData)
       await dispatch(submitWorkOrder(workOrderData)).unwrap()
 
       toast.success("Work order submitted successfully!")
@@ -221,16 +225,16 @@ export function WorkOrderForm({ isOpen, onClose }) {
 
     // Reset form
     setFormData({
-      equipmentId: "",
-      stationName: "",
+      Equipment_ID: "",
+      Station_Name: "",
       issueDescription: "",
       priority: "Medium",
-      requestedBy: "",
-      contactInfo: "",
+      Requested_By: "",
+      Contact_Info: "",
       urgency: "Normal",
-      category: "Maintenance",
       estimatedDuration: "",
       notes: "",
+      dueDate: "",
     })
     setSelectedEquipment(null)
     setPhotos([])
@@ -262,7 +266,7 @@ export function WorkOrderForm({ isOpen, onClose }) {
                   variant="outline"
                   role="combobox"
                   aria-expanded={showEquipmentSearch}
-                  className={`w-full justify-between ${errors.equipmentId ? "border-red-500" : ""}`}
+                  className={`w-full justify-between ${errors.Equipment_ID ? "border-red-500" : ""}`}
                 >
                   {selectedEquipment ? (
                     <div className="flex items-center gap-2">
@@ -321,80 +325,60 @@ export function WorkOrderForm({ isOpen, onClose }) {
                 </Command>
               </PopoverContent>
             </Popover>
-            {errors.equipmentId && <p className="text-sm text-red-600">{errors.equipmentId}</p>}
+            {errors.Equipment_ID && <p className="text-sm text-red-600">{errors.Equipment_ID}</p>}
           </div>
 
           {/* Station Name */}
           <div className="space-y-2">
-            <Label htmlFor="stationName" className="text-sm font-medium">
+            <Label htmlFor="Station_Name" className="text-sm font-medium">
               Station Name *
             </Label>
             <Input
-              id="stationName"
-              value={formData.stationName}
-              onChange={(e) => handleInputChange("stationName", e.target.value)}
+              id="Station_Name"
+              value={formData.Station_Name}
+              onChange={(e) => handleInputChange("Station_Name", e.target.value)}
               placeholder="Enter station name"
-              className={errors.stationName ? "border-red-500" : ""}
+              className={errors.Station_Name ? "border-red-500" : ""}
             />
-            {errors.stationName && <p className="text-sm text-red-600">{errors.stationName}</p>}
+            {errors.Station_Name && <p className="text-sm text-red-600">{errors.Station_Name}</p>}
           </div>
 
-          {/* Priority and Category */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="priority" className="text-sm font-medium">
-                Priority
-              </Label>
-              <Select value={formData.priority} onValueChange={(value) => handleInputChange("priority", value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Low">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                      Low
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="Medium">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-                      Medium
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="High">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-                      High
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="Critical">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                      Critical
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="category" className="text-sm font-medium">
-                Category
-              </Label>
-              <Select value={formData.category} onValueChange={(value) => handleInputChange("category", value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Maintenance">🔧 Maintenance</SelectItem>
-                  <SelectItem value="Repair">🛠️ Repair</SelectItem>
-                  <SelectItem value="Installation">⚙️ Installation</SelectItem>
-                  <SelectItem value="Inspection">🔍 Inspection</SelectItem>
-                  <SelectItem value="Emergency">🚨 Emergency</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Priority */}
+          <div className="space-y-2">
+            <Label htmlFor="priority" className="text-sm font-medium">
+              Priority
+            </Label>
+            <Select value={formData.priority} onValueChange={(value) => handleInputChange("priority", value)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Low">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    Low
+                  </div>
+                </SelectItem>
+                <SelectItem value="Medium">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                    Medium
+                  </div>
+                </SelectItem>
+                <SelectItem value="High">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                    High
+                  </div>
+                </SelectItem>
+                <SelectItem value="Critical">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                    Critical
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Issue Description */}
@@ -416,32 +400,47 @@ export function WorkOrderForm({ isOpen, onClose }) {
           {/* Requester Information */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="requestedBy" className="text-sm font-medium">
+              <Label htmlFor="Requested_By" className="text-sm font-medium">
                 Requested By *
               </Label>
               <Input
-                id="requestedBy"
-                value={formData.requestedBy}
-                onChange={(e) => handleInputChange("requestedBy", e.target.value)}
+                id="Requested_By"
+                value={formData.Requested_By}
+                onChange={(e) => handleInputChange("Requested_By", e.target.value)}
                 placeholder="Your name"
-                className={errors.requestedBy ? "border-red-500" : ""}
+                className={errors.Requested_By ? "border-red-500" : ""}
               />
-              {errors.requestedBy && <p className="text-sm text-red-600">{errors.requestedBy}</p>}
+              {errors.Requested_By && <p className="text-sm text-red-600">{errors.Requested_By}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="contactInfo" className="text-sm font-medium">
+              <Label htmlFor="Contact_Info" className="text-sm font-medium">
                 Contact Info *
               </Label>
               <Input
-                id="contactInfo"
-                value={formData.contactInfo}
-                onChange={(e) => handleInputChange("contactInfo", e.target.value)}
+                id="Contact_Info"
+                value={formData.Contact_Info}
+                onChange={(e) => handleInputChange("Contact_Info", e.target.value)}
                 placeholder="Phone or email"
-                className={errors.contactInfo ? "border-red-500" : ""}
+                className={errors.Contact_Info ? "border-red-500" : ""}
               />
-              {errors.contactInfo && <p className="text-sm text-red-600">{errors.contactInfo}</p>}
+              {errors.Contact_Info && <p className="text-sm text-red-600">{errors.Contact_Info}</p>}
             </div>
+          </div>
+
+          {/* Due Date */}
+          <div className="space-y-2">
+            <Label htmlFor="dueDate" className="text-sm font-medium">
+              Due Date *
+            </Label>
+            <Input
+              id="dueDate"
+              type="date"
+              value={formData.dueDate}
+              onChange={(e) => handleInputChange("dueDate", e.target.value)}
+              className={errors.dueDate ? "border-red-500" : ""}
+            />
+            {errors.dueDate && <p className="text-sm text-red-600">{errors.dueDate}</p>}
           </div>
 
           {/* Photo Upload */}
