@@ -129,12 +129,12 @@ export default function WorkOrdersPage() {
   // Calculate statistics
   const stats = {
     total: currentWorkOrders.length,
-    pending: currentWorkOrders.filter((wo) => (wo?.status || "") === "pending").length,
-    inProgress: currentWorkOrders.filter((wo) => (wo?.status || "") === "in-progress").length,
-    completed: currentWorkOrders.filter((wo) => (wo?.status || "") === "completed").length,
+    pending: currentWorkOrders.filter((wo) => (wo?.status || "") === "Pending").length,
+    inProgress: currentWorkOrders.filter((wo) => (wo?.status || "") === "In-progress").length,
+    completed: currentWorkOrders.filter((wo) => (wo?.status || "") === "Completed").length,
     overdue: currentWorkOrders.filter((wo) => {
       const dueDate = wo?.dueDate ? new Date(wo.dueDate) : null
-      return dueDate && dueDate < new Date() && (wo?.status || "") !== "completed"
+      return dueDate && dueDate < new Date() && (wo?.status || "") !== "Completed"
     }).length,
   }
 
@@ -155,13 +155,13 @@ export default function WorkOrdersPage() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "pending":
+      case "Pending":
         return "bg-yellow-100 text-yellow-800 border-yellow-200"
-      case "in-progress":
+      case "In-progress":
         return "bg-blue-100 text-blue-800 border-blue-200"
-      case "completed":
+      case "Completed":
         return "bg-green-100 text-green-800 border-green-200"
-      case "cancelled":
+      case "Cancelled":
         return "bg-red-100 text-red-800 border-red-200"
       default:
         return "bg-gray-100 text-gray-800 border-gray-200"
@@ -170,11 +170,11 @@ export default function WorkOrdersPage() {
 
   const getPriorityColor = (priority) => {
     switch (priority) {
-      case "high":
+      case "High":
         return "bg-red-100 text-red-800 border-red-200"
-      case "medium":
+      case "Medium":
         return "bg-orange-100 text-orange-800 border-orange-200"
-      case "low":
+      case "Low":
         return "bg-green-100 text-green-800 border-green-200"
       default:
         return "bg-gray-100 text-gray-800 border-gray-200"
