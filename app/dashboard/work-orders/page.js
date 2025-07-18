@@ -391,7 +391,7 @@ export default function WorkOrdersPage() {
                         <div>
                           <div className="font-medium">{workOrder?.title || "Untitled"}</div>
                           <div className="text-sm text-muted-foreground">
-                            {workOrder?.equipment || "No equipment specified"}
+                            {workOrder?.Equipment_ID || "No equipment specified"}
                           </div>
                         </div>
                       </TableCell>
