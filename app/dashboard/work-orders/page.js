@@ -28,8 +28,10 @@ import {
   Wrench,
 } from "lucide-react"
 import { WorkOrderForm } from "@/components/work-order-form"
+import {WorkOrderEditForm} from "@/components/work-order-edit-form"
 import { toast } from "sonner"
 import { fetchWorkOrders, deleteWorkOrders } from "@/lib/features/workOrders/workOrdersSlice"
+import { getWorkOrderById } from "@/lib/api/workorders"
 //import { buildApiUrl, getAuthHeaders } from "@/lib/config/api"
 
 export default function WorkOrdersPage() {
@@ -39,6 +41,9 @@ export default function WorkOrdersPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
   const [showForm, setShowForm] = useState(false)
+  const [showEditForm, setShowEditForm] = useState(false)
+  const [editWorkOrder, setEditWorkOrder] = useState(null)
+  const [editLoading, setEditLoading] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Mock data for development
@@ -50,7 +55,7 @@ export default function WorkOrdersPage() {
       status: "pending",
       priority: "medium",
       Requested_By: "John Smith",
-      station: "Station A",
+      Station_Name: "Station_Name A",
       createdAt: "2024-01-15T10:00:00Z",
       dueDate: "2024-01-20T10:00:00Z",
       equipment: "Fuel Pump #3",
@@ -62,7 +67,7 @@ export default function WorkOrdersPage() {
       status: "in-progress",
       priority: "high",
       Requested_By: "Sarah Johnson",
-      station: "Station B",
+      Station_Name: "Station_Name B",
       createdAt: "2024-01-14T14:30:00Z",
       dueDate: "2024-01-18T14:30:00Z",
       equipment: "Tank Level Sensor #2",
@@ -74,7 +79,7 @@ export default function WorkOrdersPage() {
       status: "completed",
       priority: "low",
       Requested_By: "Mike Wilson",
-      station: "Station C",
+      Station_Name: "Station_Name C",
       createdAt: "2024-01-10T09:00:00Z",
       dueDate: "2024-01-15T09:00:00Z",
       equipment: "Canopy Lighting",
@@ -86,7 +91,7 @@ export default function WorkOrdersPage() {
       status: "cancelled",
       priority: "medium",
       Requested_By: "Lisa Brown",
-      station: "Station A",
+      Station_Name: "Station_Name A",
       createdAt: "2024-01-12T11:00:00Z",
       dueDate: "2024-01-17T11:00:00Z",
       equipment: "POS Terminal #1",
@@ -106,14 +111,14 @@ export default function WorkOrdersPage() {
     const status = (workOrder?.status || "").toString().toLowerCase()
     const priority = (workOrder?.priority || "").toString().toLowerCase()
     const Requested_By = workOrder?.Requested_By || ""
-    const station = workOrder?.station || ""
+    const Station_Name = workOrder?.Station_Name || ""
 
     const matchesSearch =
       searchTerm === "" ||
       title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       Requested_By.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      station.toLowerCase().includes(searchTerm.toLowerCase())
+      Station_Name.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesStatus = statusFilter === "all" || status === statusFilter.toLowerCase()
     const matchesPriority = priorityFilter === "all" || priority === priorityFilter.toLowerCase()
@@ -405,7 +410,7 @@ export default function WorkOrdersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>{workOrder?.Requested_By || "Unassigned"}</TableCell>
-                      <TableCell>{workOrder?.station || "N/A"}</TableCell>
+                      <TableCell>{workOrder?.Station_Name || "N/A"}</TableCell>
                       <TableCell>{formatDate(workOrder?.dueDate)}</TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
@@ -419,7 +424,23 @@ export default function WorkOrdersPage() {
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem>View Details</DropdownMenuItem>
-                            <DropdownMenuItem>Edit Work Order</DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={async () => {
+                                setEditLoading(true);
+                                try {
+                                  const data = await getWorkOrderById(workOrder._id);
+                                  console.log(data)
+                                  setEditWorkOrder(data);
+                                  setShowEditForm(true);
+                                } catch (error) {
+                                  toast.error("Failed to load work order details");
+                                } finally {
+                                  setEditLoading(false);
+                                }
+                              }}
+                            >
+                              Edit Work Order
+                            </DropdownMenuItem>
                             <DropdownMenuItem>Assign Technician</DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
@@ -450,6 +471,20 @@ export default function WorkOrdersPage() {
             setShowForm(false)
             toast.success("Work order created successfully")
           }}
+        />
+      )}
+
+      {/* Work Order Edit Form Modal */}
+      {showEditForm && (
+        <WorkOrderEditForm
+          isOpen={showEditForm}
+          onClose={() => {
+            setShowEditForm(false)
+            setEditWorkOrder(null)
+          }}
+          workOrder={editWorkOrder}
+          loading={editLoading}
+          onUpdate={handleRefresh}
         />
       )}
     </div>
