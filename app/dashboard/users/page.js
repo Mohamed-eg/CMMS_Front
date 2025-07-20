@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Search, Eye, Edit, Trash2, UserPlus, Shield, User, Mail, Phone, RefreshCw } from "lucide-react"
+import { Search, Eye, Edit, Trash2, UserPlus, Shield, User, Mail, phone, RefreshCw } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { fetchUsers, fetchUserStats } from "@/lib/api/users"
+import { fetchUsers, createUser, deleteUser } from "@/lib/api/users"
 import { toast } from "sonner"
 
 export default function UsersPage() {
@@ -34,57 +34,62 @@ export default function UsersPage() {
   const defaultUsers = [
     {
       id: "USR-001",
-      name: "Ahmed Al-Rashid",
+      firstName: "Ahmed",
+      lastName: "Al-Rashid",
+      station_Name: "Al-Noor Gas Station - Riyadh",
       email: "ahmed.rashid@gasstation.sa",
       phone: "+966 50 123 4567",
       role: "Admin",
-      status: "Active",
-      lastLogin: "2024-01-15 09:30",
       joinDate: "2023-01-15",
+      status: "Active",
       avatar: "/placeholder.svg?height=40&width=40",
     },
     {
       id: "USR-002",
-      name: "Mohammed Al-Fahad",
+      firstName: "Mohammed",
+      lastName: "Al-Fahad",
+      station_Name: "Al-Noor Gas Station - Riyadh",
       email: "mohammed.fahad@gasstation.sa",
       phone: "+966 55 234 5678",
       role: "Technician",
-      status: "Active",
-      lastLogin: "2024-01-15 08:45",
       joinDate: "2023-03-20",
+      status: "Active",
       avatar: "/placeholder.svg?height=40&width=40",
     },
     {
       id: "USR-003",
-      name: "Abdullah Al-Rashid",
+      firstName: "Abdullah",
+      lastName: "Al-Rashid",
+      station_Name: "Al-Noor Gas Station - Riyadh",
       email: "abdullah.rashid@gasstation.sa",
       phone: "+966 56 345 6789",
       role: "Manager",
-      status: "Active",
-      lastLogin: "2024-01-14 16:20",
       joinDate: "2023-02-10",
+      status: "Active",
       avatar: "/placeholder.svg?height=40&width=40",
     },
     {
       id: "USR-004",
-      name: "Khalid Al-Mutairi",
+      firstName: "Khalid",
+      lastName: "Al-Mutairi",
+      station_Name: "Al-Noor Gas Station - Riyadh",
       email: "khalid.mutairi@gasstation.sa",
       phone: "+966 54 456 7890",
       role: "Technician",
-      status: "Active",
-      lastLogin: "2024-01-15 07:15",
       joinDate: "2023-05-12",
+      status: "Active",
       avatar: "/placeholder.svg?height=40&width=40",
     },
     {
       id: "USR-005",
-      name: "Omar Al-Zahra",
+      firstName: "Omar",
+      lastName: "Al-Zahra",
+      Station_Name: "Al-Noor Gas Station - Riyadh",
       email: "omar.zahra@gasstation.sa",
       phone: "+966 53 567 8901",
       role: "Technician",
-      status: "Inactive",
-      lastLogin: "2024-01-10 14:30",
       joinDate: "2023-08-05",
+      status: "Inactive",
       avatar: "/placeholder.svg?height=40&width=40",
     },
   ]
@@ -100,8 +105,8 @@ export default function UsersPage() {
         role: roleFilter,
         status: statusFilter,
       }
-
-      const [usersData, statsData] = await Promise.all([fetchUsers(filters), fetchUserStats()])
+//if you want to fetch user stats add fetchUserStats() to the array
+      const [usersData, statsData] = await Promise.all([fetchUsers(filters)])
 
       setUsers(usersData.users || usersData || [])
       setUserStats(statsData || {})
@@ -119,7 +124,7 @@ export default function UsersPage() {
   // Load data on component mount and when filters change
   useEffect(() => {
     // Comment out API call for now until backend is ready
-    // loadUsers()
+    loadUsers()
 
     // Use default data for now
     setUsers(defaultUsers)
@@ -166,14 +171,14 @@ export default function UsersPage() {
   }
 
   const filteredUsers = users.filter((user) => {
+    const fullName = `${user.firstName || ""} ${user.lastName || ""}`.toLowerCase();
     const matchesSearch =
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.id.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesRole = roleFilter === "all" || user.role === roleFilter
-    const matchesStatus = statusFilter === "all" || user.status === statusFilter
-
-    return matchesSearch && matchesRole && matchesStatus
+      fullName.includes(searchTerm.toLowerCase()) ||
+      (user.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user._id || "").toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = roleFilter === "all" || user.role === roleFilter;
+    const matchesStatus = statusFilter === "all" || user.status === statusFilter;
+    return matchesSearch && matchesRole && matchesStatus;
   })
 
   const handleCreateUser = async (formData) => {
@@ -185,11 +190,12 @@ export default function UsersPage() {
         phone: formData.get("phone"),
         role: formData.get("role"),
         status: formData.get("status"),
+        station_Name: formData.get("station_Name"),
         password: formData.get("password"),
       }
 
       // Comment out API call for now
-      // await createUser(userData)
+      await createUser(userData)
 
       toast.success("User created successfully")
       loadUsers() // Refresh the list
@@ -202,7 +208,7 @@ export default function UsersPage() {
   const handleDeleteUser = async (id) => {
     try {
       // Comment out API call for now
-      // await deleteUser(id)
+      await deleteUser(id)
 
       toast.success("User deleted successfully")
       loadUsers() // Refresh the list
@@ -259,6 +265,10 @@ export default function UsersPage() {
                       <Label htmlFor="lastName">Last Name</Label>
                       <Input id="lastName" name="lastName" placeholder="Al-Rashid" required />
                     </div>
+                    <div className="space-y-2 col-span-2">
+                      <Label htmlFor="station_Name">Station Name</Label>
+                      <Input id="station_Name" name="station_Name" placeholder="Search station name... (type to search)" required />
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -266,13 +276,13 @@ export default function UsersPage() {
                       <Input id="email" name="email" type="email" placeholder="user@gasstation.sa" required />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="phone">Phone</Label>
+                      <Label htmlFor="phone">phone</Label>
                       <Input id="phone" name="phone" placeholder="+966 50 123 4567" required />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="role">Role</Label>
+                      <Label htmlFor="role">role</Label>
                       <Select name="role" required>
                         <SelectTrigger>
                           <SelectValue placeholder="Select role" />
@@ -428,29 +438,26 @@ export default function UsersPage() {
                 <TableHead>User</TableHead>
                 <TableHead>Contact</TableHead>
                 <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last Login</TableHead>
+                <TableHead>status</TableHead>
+                <TableHead>Station</TableHead>
                 <TableHead>Join Date</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredUsers.map((user) => (
-                <TableRow key={user.id}>
+                <TableRow key={user.id || user._id ||`${Math.random()}`}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar>
-                        <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
+                        <AvatarImage src={user.avatar} alt={`${user.firstName} ${user.lastName}`} />
                         <AvatarFallback>
-                          {user.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
+                          {`${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium">{user.name}</p>
-                        <p className="text-sm text-muted-foreground">{user.id}</p>
+                        <p className="font-medium">{`${user.firstName} ${user.lastName}`}</p>
+                        <p className="text-sm text-muted-foreground">{user._id}</p>
                       </div>
                     </div>
                   </TableCell>
@@ -461,7 +468,7 @@ export default function UsersPage() {
                         <span className="text-sm">{user.email}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Phone className="h-3 w-3 text-muted-foreground" />
+                        <phone className="h-3 w-3 text-muted-foreground" />
                         <span className="text-sm">{user.phone}</span>
                       </div>
                     </div>
@@ -476,7 +483,7 @@ export default function UsersPage() {
                     <Badge className={getStatusColor(user.status)}>{user.status}</Badge>
                   </TableCell>
                   <TableCell>
-                    <span className="text-sm">{user.lastLogin}</span>
+                    <span className="text-sm">{user.station_Name}</span>
                   </TableCell>
                   <TableCell>
                     <span className="text-sm">{user.joinDate}</span>
@@ -489,7 +496,7 @@ export default function UsersPage() {
                       <Button variant="ghost" size="sm">
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteUser(user.id)}>
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteUser(user._id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
