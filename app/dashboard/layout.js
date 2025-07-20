@@ -7,7 +7,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
-import { LogOut, User } from "lucide-react"
+import { LogOut, User, Settings } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,7 +66,7 @@ export default function DashboardLayout({ children }) {
                 onClick={() => setIsOpen(!isOpen)}
               >
                 <User className="h-4 w-4" />
-                {user.fullName}
+                {user.firstName}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 z-100" sideOffset={5}>
@@ -76,7 +76,9 @@ export default function DashboardLayout({ children }) {
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer">Settings</DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer">
+                <Settings className="mr-2 h-4 w-4" />
+                Settings</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 focus:text-red-600">
                 <LogOut className="mr-2 h-4 w-4" />

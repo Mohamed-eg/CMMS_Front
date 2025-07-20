@@ -42,7 +42,8 @@ import {
   Shield,
   Activity,
 } from "lucide-react"
-import { use, useEffect,useState } from "react"
+import { use, useEffect, useState } from "react"
+import { useSelector } from "react-redux"
 
 // Navigation items
 const navigationItems = [
@@ -130,12 +131,13 @@ const navigationItems = [
 export function AppSidebar({ ...props }) {
   const router = useRouter()
   const [userData,setUser] = useState({
-    fullName: "Ahmed Al-Rashid",
+    firstName: "Ahmed Al-Rashid",
     email: "ahmed.rashid@cmms.sa",
     role: "Maintenance Manager",
     avatar: "/placeholder-user.jpg",
     status: "online",
   })
+  const workOrderCount = useSelector(state => state.workOrders?.workOrders?.length || 0)
   useEffect(() => {
     const userData = localStorage.getItem("user")
     if (!userData) {
@@ -145,6 +147,21 @@ export function AppSidebar({ ...props }) {
     }
   }, [router])
   const pathname = usePathname()
+
+  // Clone navigationItems and inject workOrderCount
+  const navItemsWithCount = navigationItems.map(group => {
+    if (group.title === "Operations") {
+      return {
+        ...group,
+        items: group.items.map(item =>
+          item.title === "Work Orders"
+            ? { ...item, badge: { count: workOrderCount, variant: "destructive" } }
+            : item
+        ),
+      }
+    }
+    return group
+  })
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -166,7 +183,7 @@ export function AppSidebar({ ...props }) {
       </SidebarHeader>
 
       <SidebarContent className="bg-gradient-to-b from-white to-gray-50/50 dark:from-gray-900 dark:to-gray-950/50">
-        {navigationItems.map((group) => (
+        {navItemsWithCount.map((group) => (
           <SidebarGroup key={group.title}>
             <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-wider px-3">
               {group.title}
@@ -266,9 +283,9 @@ export function AppSidebar({ ...props }) {
                   <div className="flex items-center gap-3 w-full">
                     <div className="relative">
                       <Avatar className="h-10 w-10 border-2 border-white shadow-md">
-                        <AvatarImage src={userData.avatar || "/placeholder.svg"} alt={userData.fullName} />
+                        <AvatarImage src={userData.avatar || "/placeholder.svg"} alt={userData.firstName} />
                         <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white font-semibold">
-                          {userData.fullName
+                          {userData.firstName
                             .split(" ")
                             .map((n) => n[0])
                             .join("")}
@@ -278,7 +295,7 @@ export function AppSidebar({ ...props }) {
                     </div>
                     <div className="flex flex-col flex-1 min-w-0 text-left">
                       <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
-                        {userData.fullName}
+                        {userData.firstName}
                       </span>
                       <span className="text-xs text-muted-foreground truncate">{userData.role || "user"}</span>
                     </div>
@@ -297,14 +314,14 @@ export function AppSidebar({ ...props }) {
                     <Avatar className="h-12 w-12 border-2 border-white shadow-md">
                       <AvatarImage src={userData.avatar || "/placeholder.svg"} alt={userData.fullName} />
                       <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white font-semibold">
-                        {userData.fullName
+                        {userData.firstName
                           .split(" ")
                           .map((n) => n[0])
                           .join("")}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
-                      <span className="font-semibold text-gray-900">{userData.fullName}</span>
+                      <span className="font-semibold text-gray-900">{userData.firstName}</span>
                       <span className="text-sm text-muted-foreground">{userData.email}</span>
                       <Badge variant="secondary" className="w-fit mt-1 text-xs">
                         {userData.role}

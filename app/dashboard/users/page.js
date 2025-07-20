@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Search, Eye, Edit, Trash2, UserPlus, Shield, User, Mail, phone, RefreshCw } from "lucide-react"
+import { Search, Eye, Edit, Trash2, UserPlus, Shield, User, Mail, Phone, RefreshCw } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
@@ -468,7 +468,7 @@ export default function UsersPage() {
                         <span className="text-sm">{user.email}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <phone className="h-3 w-3 text-muted-foreground" />
+                        <Phone className="h-3 w-3 text-muted-foreground" />
                         <span className="text-sm">{user.phone}</span>
                       </div>
                     </div>
