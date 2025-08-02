@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
+import { useSelector, useDispatch } from "react-redux"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Search, Eye, Edit, Trash2, UserPlus, Shield, User, Mail, Phone, RefreshCw } from "lucide-react"
+import { Search, Eye, Edit, Trash2, UserPlus, Shield, User, Mail, Phone, RefreshCw,  Calendar, } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
@@ -18,118 +19,40 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { fetchUsers, createUser, deleteUser } from "@/lib/api/users"
+import { fetchUsers, addUser, deleteUser, updateUser, setSearchTerm, setRoleFilter, setStatusFilter } from "@/lib/features/users/usersSlice"
+import UserEditForm from "@/components/user-edit-form"
 import { toast } from "sonner"
-
+import { formatDate } from "@/lib/helper"
 export default function UsersPage() {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [roleFilter, setRoleFilter] = useState("all")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [users, setUsers] = useState([])
-  const [userStats, setUserStats] = useState({})
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const dispatch = useDispatch()
+  const users = useSelector((state) => state.users.filteredUsers)
+  const loading = useSelector((state) => state.users.loading)
+  const error = useSelector((state) => state.users.error)
+  const searchTerm = useSelector((state) => state.users.searchTerm)
+  const roleFilter = useSelector((state) => state.users.roleFilter)
+  const statusFilter = useSelector((state) => state.users.statusFilter)
+  const [selectedUser, setSelectedUser] = useState(null)
+  const [showEditForm, setShowEditForm] = useState(false)
+  const [currentUser, setCurrentUser] = useState(null)
 
-  // Default fallback data
-  const defaultUsers = [
-    {
-      id: "USR-001",
-      firstName: "Ahmed",
-      lastName: "Al-Rashid",
-      station_Name: "Al-Noor Gas Station - Riyadh",
-      email: "ahmed.rashid@gasstation.sa",
-      phone: "+966 50 123 4567",
-      role: "Admin",
-      joinDate: "2023-01-15",
-      status: "Active",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-    {
-      id: "USR-002",
-      firstName: "Mohammed",
-      lastName: "Al-Fahad",
-      station_Name: "Al-Noor Gas Station - Riyadh",
-      email: "mohammed.fahad@gasstation.sa",
-      phone: "+966 55 234 5678",
-      role: "Technician",
-      joinDate: "2023-03-20",
-      status: "Active",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-    {
-      id: "USR-003",
-      firstName: "Abdullah",
-      lastName: "Al-Rashid",
-      station_Name: "Al-Noor Gas Station - Riyadh",
-      email: "abdullah.rashid@gasstation.sa",
-      phone: "+966 56 345 6789",
-      role: "Manager",
-      joinDate: "2023-02-10",
-      status: "Active",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-    {
-      id: "USR-004",
-      firstName: "Khalid",
-      lastName: "Al-Mutairi",
-      station_Name: "Al-Noor Gas Station - Riyadh",
-      email: "khalid.mutairi@gasstation.sa",
-      phone: "+966 54 456 7890",
-      role: "Technician",
-      joinDate: "2023-05-12",
-      status: "Active",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-    {
-      id: "USR-005",
-      firstName: "Omar",
-      lastName: "Al-Zahra",
-      Station_Name: "Al-Noor Gas Station - Riyadh",
-      email: "omar.zahra@gasstation.sa",
-      phone: "+966 53 567 8901",
-      role: "Technician",
-      joinDate: "2023-08-05",
-      status: "Inactive",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-  ]
+  // Get current user from localStorage
+  useEffect(() => {
+    const userData = localStorage.getItem("user")
+    if (userData) {
+      setCurrentUser(JSON.parse(userData))
+    }
+  }, [])
 
   // Load users data
-  const loadUsers = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      const filters = {
-        search: searchTerm,
-        role: roleFilter,
-        status: statusFilter,
-      }
-//if you want to fetch user stats add fetchUserStats() to the array
-      const [usersData, statsData] = await Promise.all([fetchUsers(filters)])
-
-      setUsers(usersData.users || usersData || [])
-      setUserStats(statsData || {})
-      toast.success("Users loaded successfully")
-    } catch (err) {
-      console.error("Error loading users:", err)
-      setError(err.message)
-      setUsers(defaultUsers) // Use fallback data
-      toast.error("Failed to load users, showing cached data")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Load data on component mount and when filters change
   useEffect(() => {
-    // Comment out API call for now until backend is ready
-    loadUsers()
+    dispatch(fetchUsers())
+  }, [dispatch])
 
-    // Use default data for now
-    setUsers(defaultUsers)
-    setLoading(false)
-  }, [searchTerm, roleFilter, statusFilter])
+  // Check if a user is the current user
+  const isCurrentUser = (user) => {
+    if (!currentUser || !user) return false
+    return (user._id === currentUser._id) || (user.email === currentUser.email)
+  }
 
   const getRoleColor = (role) => {
     switch (role) {
@@ -169,18 +92,36 @@ export default function UsersPage() {
         return <User className="h-4 w-4" />
     }
   }
-
-  const filteredUsers = users.filter((user) => {
-    const fullName = `${user.firstName || ""} ${user.lastName || ""}`.toLowerCase();
-    const matchesSearch =
-      fullName.includes(searchTerm.toLowerCase()) ||
-      (user.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user._id || "").toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === "all" || user.role === roleFilter;
-    const matchesStatus = statusFilter === "all" || user.status === statusFilter;
-    return matchesSearch && matchesRole && matchesStatus;
-  })
-
+console.log(users)
+//   const filteredUsers = users.filter((user) => {
+//     const fullName = `${user.firstName || ""} ${user.lastName || ""}`.toLowerCase();
+//     const matchesSearch =
+//       fullName.includes(searchTerm.toLowerCase()) ||
+//       (user.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+//       (user._id || "").toLowerCase().includes(searchTerm.toLowerCase());
+//     const matchesRole = roleFilter === "all" || user.role === roleFilter;
+//     const matchesStatus = statusFilter === "all" || user.status === statusFilter;
+//     if(matchesRole || matchesSearch || matchesStatus){
+//       return matchesSearch && matchesRole && matchesStatus;
+//     }else{
+//       return users
+//     }
+    
+//   })
+// console.log(filteredUsers)
+  // Handlers for filters
+  const handleSearchChange = (e) => {
+    dispatch(setSearchTerm(e.target.value))
+  }
+  const handleRoleChange = (value) => {
+    dispatch(setRoleFilter(value))
+  }
+  const handleStatusChange = (value) => {
+    dispatch(setStatusFilter(value))
+  }
+  const handleRefresh = () => {
+    dispatch(fetchUsers())
+  }
   const handleCreateUser = async (formData) => {
     try {
       const userData = {
@@ -193,28 +134,43 @@ export default function UsersPage() {
         station_Name: formData.get("station_Name"),
         password: formData.get("password"),
       }
-
-      // Comment out API call for now
-      await createUser(userData)
-
+      await dispatch(addUser(userData)).unwrap()
       toast.success("User created successfully")
-      loadUsers() // Refresh the list
+      dispatch(fetchUsers())
     } catch (err) {
       console.error("Error creating user:", err)
-      toast.error("Failed to create user")
+      // Provide more specific error messages
+      if (err.message?.includes("duplicate") || err.message?.includes("User already exists!")) {
+        toast.error("User with this email already exists")
+      } else if (err.message?.includes("validation")) {
+        toast.error("Please check your input data")
+      } else {
+        toast.error("Failed to create user. Please try again.")
+      }
     }
   }
-
-  const handleDeleteUser = async (id) => {
+  const handleDeleteUserRedux = async (id) => {
     try {
-      // Comment out API call for now
-      await deleteUser(id)
-
+      await dispatch(deleteUser(id)).unwrap()
       toast.success("User deleted successfully")
-      loadUsers() // Refresh the list
+      dispatch(fetchUsers())
     } catch (err) {
-      console.error("Error deleting user:", err)
       toast.error("Failed to delete user")
+    }
+  }
+  const handleEditUser = (user) => {
+    setSelectedUser(user)
+    setShowEditForm(true)
+  }
+  const handleUpdateUser = async (userData) => {
+    try {
+      const userId = selectedUser._id || selectedUser.id
+      await dispatch(updateUser({ id: userId, userData })).unwrap()
+      toast.success("User updated successfully")
+      dispatch(fetchUsers())
+    } catch (err) {
+      toast.error("Failed to update user")
+      throw err
     }
   }
 
@@ -238,7 +194,7 @@ export default function UsersPage() {
           <p className="text-muted-foreground">Manage user accounts and permissions for your gas station</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={loadUsers} disabled={loading}>
+          <Button variant="outline" onClick={handleRefresh} disabled={loading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
@@ -254,7 +210,11 @@ export default function UsersPage() {
                 <DialogTitle>Add New User</DialogTitle>
                 <DialogDescription>Create a new user account for your gas station staff.</DialogDescription>
               </DialogHeader>
-              <form action={handleCreateUser}>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                handleCreateUser(formData);
+              }}>
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -355,7 +315,7 @@ export default function UsersPage() {
             <User className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{users.filter((u) => u.status === "Active").length}</div>
+            <div className="text-2xl font-bold">{users?.filter((u) => u?.status === "Active").length || 0}</div>
             <p className="text-xs text-muted-foreground">Currently active</p>
           </CardContent>
         </Card>
@@ -365,7 +325,7 @@ export default function UsersPage() {
             <User className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{users.filter((u) => u.role === "Technician").length}</div>
+            <div className="text-2xl font-bold">{users?.filter((u) => u?.role === "Technician").length || 0}</div>
             <p className="text-xs text-muted-foreground">Field technicians</p>
           </CardContent>
         </Card>
@@ -375,7 +335,7 @@ export default function UsersPage() {
             <Shield className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{users.filter((u) => u.role === "Admin").length}</div>
+            <div className="text-2xl font-bold">{users?.filter((u) => u?.role === "Admin").length || 0}</div>
             <p className="text-xs text-muted-foreground">System administrators</p>
           </CardContent>
         </Card>
@@ -394,12 +354,12 @@ export default function UsersPage() {
                 <Input
                   placeholder="Search users..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={handleSearchChange}
                   className="pl-8"
                 />
               </div>
             </div>
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <Select value={roleFilter} onValueChange={handleRoleChange}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filter by role" />
               </SelectTrigger>
@@ -410,7 +370,7 @@ export default function UsersPage() {
                 <SelectItem value="Technician">Technician</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={handleStatusChange}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
@@ -428,7 +388,7 @@ export default function UsersPage() {
       {/* Users Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Users ({filteredUsers.length})</CardTitle>
+          <CardTitle>Users ({users.length})</CardTitle>
           <CardDescription>Manage all user accounts and their permissions</CardDescription>
         </CardHeader>
         <CardContent>
@@ -445,68 +405,85 @@ export default function UsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id || user._id ||`${Math.random()}`}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarImage src={user.avatar} alt={`${user.firstName} ${user.lastName}`} />
-                        <AvatarFallback>
-                          {`${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{`${user.firstName} ${user.lastName}`}</p>
-                        <p className="text-sm text-muted-foreground">{user._id}</p>
-                      </div>
+              {users.map((user) => (
+                (user)?<TableRow key={user.id || user._id ||`${Math.random()}`}>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <Avatar>
+                      <AvatarImage src={user.avatar} alt={`${user.firstName} ${user.lastName}`} />
+                      <AvatarFallback>
+                        {`${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{`${user.firstName} ${user.lastName}`}</p>
+                      <p className="text-sm text-muted-foreground">{user._id}</p>
+                      {isCurrentUser(user) && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          My account
+                        </span>
+                      )}
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-sm">{user.email}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-sm">{user.phone}</span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      {getRoleIcon(user.role)}
-                      <Badge className={getRoleColor(user.role)}>{user.role}</Badge>
+                      <Mail className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-sm">{user.email}</span>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(user.status)}>{user.status}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm">{user.station_Name}</span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm">{user.joinDate}</span>
-                  </TableCell>
-                  <TableCell>
                     <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteUser(user._id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <Phone className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-sm">{user.phone}</span>
                     </div>
-                  </TableCell>
-                </TableRow>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    {getRoleIcon(user.role)}
+                    <Badge className={getRoleColor(user.role)}>{user.role}</Badge>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge className={getStatusColor(user.status)}>{user.status}</Badge>
+                </TableCell>
+                <TableCell>
+                  <span className="text-sm">{user.station_Name}</span>
+                </TableCell>
+                <TableCell>
+                 <div className="flex items-center flex-row gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">{formatDate(user.joinDate)}</span>
+                 </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm">
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleEditUser(user)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDeleteUserRedux(user._id || user.id)} disabled={isCurrentUser(user)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>:null
               ))}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+      <UserEditForm
+        isOpen={showEditForm}
+        onClose={() => {
+          setShowEditForm(false)
+          setSelectedUser(null)
+        }}
+        user={selectedUser}
+        onSubmit={handleUpdateUser}
+      />
     </div>
   )
 }

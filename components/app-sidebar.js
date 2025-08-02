@@ -138,6 +138,7 @@ export function AppSidebar({ ...props }) {
     status: "online",
   })
   const workOrderCount = useSelector(state => state.workOrders?.workOrders?.length || 0)
+  const assetCount = useSelector(state => state.assets?.assets?.length || 0)
   useEffect(() => {
     const userData = localStorage.getItem("user")
     if (!userData) {
@@ -153,11 +154,15 @@ export function AppSidebar({ ...props }) {
     if (group.title === "Operations") {
       return {
         ...group,
-        items: group.items.map(item =>
-          item.title === "Work Orders"
-            ? { ...item, badge: { count: workOrderCount, variant: "destructive" } }
-            : item
-        ),
+        items: group.items.map(item => {
+          if (item.title === "Work Orders") {
+            return { ...item, badge: { count: workOrderCount, variant: "destructive" } }
+          }
+          if (item.title === "Assets") {
+            return { ...item, badge: { count: assetCount, variant: "secondary" } }
+          }
+          return item
+        }),
       }
     }
     return group

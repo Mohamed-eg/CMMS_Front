@@ -26,12 +26,15 @@ import {
   XCircle,
   RefreshCw,
   Wrench,
+  Calendar,
+  User,
 } from "lucide-react"
 import { WorkOrderForm } from "@/components/work-order-form"
 import {WorkOrderEditForm} from "@/components/work-order-edit-form"
 import { toast } from "sonner"
 import { fetchWorkOrders, deleteWorkOrders } from "@/lib/features/workOrders/workOrdersSlice"
 import { getWorkOrderById } from "@/lib/api/workorders"
+import { formatDate } from "@/lib/helper"
 //import { buildApiUrl, getAuthHeaders } from "@/lib/config/api"
 
 export default function WorkOrdersPage() {
@@ -178,15 +181,6 @@ export default function WorkOrdersPage() {
         return "bg-green-100 text-green-800 border-green-200"
       default:
         return "bg-gray-100 text-gray-800 border-gray-200"
-    }
-  }
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A"
-    try {
-      return new Date(dateString).toLocaleDateString()
-    } catch (error) {
-      return "Invalid Date"
     }
   }
 
@@ -409,9 +403,19 @@ export default function WorkOrdersPage() {
                           {workOrder?.priority || "Unknown"}
                         </Badge>
                       </TableCell>
-                      <TableCell>{workOrder?.Requested_By || "Unassigned"}</TableCell>
+                      <TableCell>
+                      <div className="flex items-center flex-row gap-2">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{workOrder?.Requested_By || "Unassigned"}</span>
+                      </div>
+                        </TableCell>
                       <TableCell>{workOrder?.Station_Name || "N/A"}</TableCell>
-                      <TableCell>{formatDate(workOrder?.dueDate)}</TableCell>
+                      <TableCell>
+                      <div className="flex items-center flex-row gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{formatDate(workOrder?.dueDate)}</span>
+                      </div>
+                        </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

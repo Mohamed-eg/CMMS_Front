@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useDispatch, useSelector } from "react-redux"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,176 +23,48 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import AddAssetForm from "@/components/add-asset-form"
-import { fetchAssets, fetchAssetStats } from "@/lib/api/assets"
+import { fetchAssets, fetchAssetStats, deleteExistingAsset } from "@/lib/features/assets/assetsSlice"
 import { toast } from "sonner"
 
 export default function AssetsPage() {
+  const dispatch = useDispatch()
+  const { assets, stats, loading, error } = useSelector((state) => state.assets)
+  
   const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
   const [selectedAsset, setSelectedAsset] = useState(null)
   const [showAssetDetails, setShowAssetDetails] = useState(false)
   const [showAddAssetForm, setShowAddAssetForm] = useState(false)
-  const [assets, setAssets] = useState([])
-  const [assetStats, setAssetStats] = useState({})
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-
-  // Default fallback data
-  const defaultAssets = [
-    {
-      id: "AST-001",
-      name: "Fuel Pump #1",
-      category: "Fuel Dispensing",
-      location: "Pump Island A",
-      gpsCoordinates: "24.7136° N, 46.6753° E",
-      status: "Active",
-      lastMaintenance: "2024-01-10",
-      nextMaintenance: "2024-02-10",
-      condition: "Good",
-      serialNumber: "FP-2023-001",
-      manufacturer: "Wayne Fueling Systems",
-      installDate: "2023-03-15",
-      expectedLifespan: "10 years",
-      usageHours: 8760,
-      flowRateAnomalies: 2,
-      serviceFrequency: "Monthly",
-      photos: ["/placeholder.svg?height=200&width=300"],
-      specifications: {
-        model: "Wayne Ovation II",
-        fuelTypes: ["Gasoline 91", "Gasoline 95", "Diesel"],
-        flowRate: "40 L/min",
-        accuracy: "±0.3%",
-      },
-      maintenanceHistory: [
-        { date: "2024-01-10", type: "Routine Inspection", technician: "Mohammed Al-Fahad", duration: "2 hours" },
-        { date: "2023-12-15", type: "Calibration", technician: "Abdullah Al-Rashid", duration: "1.5 hours" },
-      ],
-    },
-    {
-      id: "AST-002",
-      name: "Storage Tank #1",
-      category: "Storage",
-      location: "Underground Tank Farm",
-      gpsCoordinates: "24.7136° N, 46.6753° E",
-      status: "Active",
-      lastMaintenance: "2024-01-05",
-      nextMaintenance: "2024-04-05",
-      condition: "Excellent",
-      serialNumber: "ST-2022-001",
-      manufacturer: "Containment Solutions",
-      installDate: "2022-08-20",
-      expectedLifespan: "15 years",
-      usageHours: 4380,
-      flowRateAnomalies: 0,
-      serviceFrequency: "Annually",
-      photos: ["/placeholder.svg?height=200&width=300"],
-      specifications: {
-        model: "CSI Double Wall",
-        capacity: "20,000 liters",
-        material: "Fiberglass",
-        leakDetection: "Integrated sensor",
-      },
-      maintenanceHistory: [
-        { date: "2024-01-05", type: "Integrity Test", technician: "Faisal Al-Khalid", duration: "3 hours" },
-        { date: "2023-08-20", type: "Visual Inspection", technician: "Nasser Al-Salem", duration: "1 hour" },
-      ],
-    },
-    {
-      id: "AST-003",
-      name: "Air Compressor Unit 1",
-      category: "Utility",
-      location: "Equipment Room",
-      gpsCoordinates: "24.7136° N, 46.6753° E",
-      status: "Maintenance Required",
-      lastMaintenance: "2023-12-15",
-      nextMaintenance: "2024-01-15",
-      condition: "Fair",
-      serialNumber: "AC-2021-003",
-      manufacturer: "Atlas Copco",
-      installDate: "2021-11-10",
-      expectedLifespan: "8 years",
-      usageHours: 6570,
-      flowRateAnomalies: 5,
-      serviceFrequency: "Bi-Annually",
-      photos: ["/placeholder.svg?height=200&width=300"],
-      specifications: {
-        model: "GA 11 VSD+",
-        power: "11 kW",
-        pressure: "7-13 bar",
-        airDelivery: "1.5-3.5 m³/min",
-      },
-      maintenanceHistory: [
-        { date: "2023-12-15", type: "Filter Replacement", technician: "Saleh Al-Otaibi", duration: "2 hours" },
-        { date: "2023-06-10", type: "Oil Change", technician: "Omar Al-Zahrani", duration: "1.5 hours" },
-      ],
-    },
-    {
-      id: "AST-004",
-      name: "Fire Suppression System",
-      category: "Safety",
-      location: "Station Wide",
-      gpsCoordinates: "24.7136° N, 46.6753° E",
-      status: "Active",
-      lastMaintenance: "2024-01-08",
-      nextMaintenance: "2024-02-08",
-      condition: "Good",
-      serialNumber: "FS-2023-001",
-      manufacturer: "Ansul",
-      installDate: "2023-01-12",
-      expectedLifespan: "12 years",
-      usageHours: 0,
-      flowRateAnomalies: 0,
-      serviceFrequency: "Annually",
-      photos: ["/placeholder.svg?height=200&width=300"],
-      specifications: {
-        model: "R-102",
-        agentType: "Wet Chemical",
-        coverageArea: "500 sq ft",
-        dischargeTime: "60 seconds",
-      },
-      maintenanceHistory: [
-        { date: "2024-01-08", type: "Pressure Check", technician: "Ziad Al-Ghamdi", duration: "1 hour" },
-        { date: "2023-01-12", type: "System Inspection", technician: "Fahad Al-Dosari", duration: "2 hours" },
-      ],
-    },
-  ]
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Load assets data
   const loadAssets = async () => {
     try {
-      setLoading(true)
-      setError(null)
-
+      setIsRefreshing(true)
       const filters = {
         search: searchTerm,
         category: categoryFilter,
         status: statusFilter,
       }
-
-      const [assetsData, statsData] = await Promise.all([fetchAssets(filters), fetchAssetStats()])
-
-      setAssets(assetsData.assets || assetsData || [])
-      setAssetStats(statsData || {})
+      
+      await Promise.all([
+        dispatch(fetchAssets(filters)).unwrap(),
+        dispatch(fetchAssetStats()).unwrap()
+      ])
+      
       toast.success("Assets loaded successfully")
     } catch (err) {
       console.error("Error loading assets:", err)
-      setError(err.message)
-      setAssets(defaultAssets) // Use fallback data
-      toast.error("Failed to load assets, showing cached data")
+      toast.error("Failed to load assets")
     } finally {
-      setLoading(false)
+      setIsRefreshing(false)
     }
   }
 
   // Load data on component mount and when filters change
   useEffect(() => {
-    // Comment out API call for now until backend is ready
-    // loadAssets()
-
-    // Use default data for now
-    setAssets(defaultAssets)
-    setLoading(false)
+    loadAssets()
   }, [searchTerm, categoryFilter, statusFilter])
 
   const getStatusColor = (status) => {
@@ -250,18 +123,19 @@ export default function AssetsPage() {
 
   const handleDeleteAsset = async (id) => {
     try {
-      // Comment out API call for now
-      // await deleteAsset(id)
-
+      await dispatch(deleteExistingAsset(id)).unwrap()
       toast.success("Asset deleted successfully")
-      loadAssets() // Refresh the list
     } catch (err) {
       console.error("Error deleting asset:", err)
       toast.error("Failed to delete asset")
     }
   }
 
-  if (loading) {
+  const handleRefresh = async () => {
+    await loadAssets()
+  }
+
+  if (loading && !isRefreshing) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="flex items-center gap-2">
@@ -281,8 +155,8 @@ export default function AssetsPage() {
           <p className="text-muted-foreground">Manage and track all gas station assets and equipment</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={loadAssets} disabled={loading}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
             Refresh
           </Button>
           <Button onClick={() => setShowAddAssetForm(true)}>
@@ -293,10 +167,15 @@ export default function AssetsPage() {
           <AddAssetForm
             isOpen={showAddAssetForm}
             onClose={() => setShowAddAssetForm(false)}
-            onSubmit={(assetData) => {
-              console.log("New asset added:", assetData)
-              toast.success(`Asset ${assetData.equipmentName} added successfully!`)
-              loadAssets() // Refresh the list
+            onSubmit={async (assetData) => {
+              try {
+                // This will be handled by the form component
+                console.log("New asset added:", assetData)
+                toast.success(`Asset ${assetData.equipmentName} added successfully!`)
+                await loadAssets() // Refresh the list
+              } catch (error) {
+                toast.error("Failed to add asset")
+              }
             }}
           />
         </div>
@@ -309,7 +188,6 @@ export default function AssetsPage() {
             <div className="flex items-center gap-2 text-red-800">
               <span className="font-medium">API Error:</span>
               <span>{error}</span>
-              <span className="text-sm">(Showing cached data)</span>
             </div>
           </CardContent>
         </Card>
