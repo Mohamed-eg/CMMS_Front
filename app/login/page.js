@@ -43,11 +43,18 @@ export default function LoginPage() {
         localStorage.setItem("user", JSON.stringify(response.user))
       }
 
-      console.log("✅ Login successful, redirecting to dashboard...")
+      console.log("✅ Login successful, checking user role...")
 
+      // Check user role and redirect accordingly
+      const userRole = response.user?.role?.toLowerCase() || response.user?.Role?.toLowerCase()
+      
       // Add a small delay to ensure localStorage is saved
       setTimeout(() => {
-        router.push("/dashboard")
+        if (userRole === "technician") {
+          router.push("/dashboard/technician")
+        } else {
+          router.push("/dashboard")
+        }
       }, 100)
     } catch (error) {
       console.error("❌ Login error:", error.message)

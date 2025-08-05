@@ -149,8 +149,38 @@ export function AppSidebar({ ...props }) {
   }, [router])
   const pathname = usePathname()
 
+  // Get user role
+  const userRole = userData.role?.toLowerCase() || userData.Role?.toLowerCase()
+  const isTechnician = userRole === "technician"
+
+  // Filter navigation items based on user role
+  const getFilteredNavigationItems = () => {
+    if (isTechnician) {
+      // Technicians only see limited navigation
+      return [
+        {
+          title: "Operations",
+          items: [
+            {
+              title: "Work Orders",
+              url: "/dashboard/technician",
+              icon: Wrench,
+              description: "View and manage your assigned work orders",
+              badge: { count: workOrderCount, variant: "destructive" },
+            },
+          ],
+        },
+      ]
+    }
+
+    // Admin/Manager sees full navigation
+    return navigationItems
+  }
+
+  const filteredNavItems = getFilteredNavigationItems()
+
   // Clone navigationItems and inject workOrderCount
-  const navItemsWithCount = navigationItems.map(group => {
+  const navItemsWithCount = filteredNavItems.map(group => {
     if (group.title === "Operations") {
       return {
         ...group,

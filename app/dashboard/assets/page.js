@@ -23,13 +23,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import AddAssetForm from "@/components/add-asset-form"
-import { fetchAssets, fetchAssetStats, deleteExistingAsset } from "@/lib/features/assets/assetsSlice"
+import { fetchAssets, fetchAssetStats, deleteExistingAsset, createNewAsset } from "@/lib/features/assets/assetsSlice"
 import { toast } from "sonner"
+import { formatDate } from "@/lib/helper"
+import { useRouter } from "next/navigation"
 
 export default function AssetsPage() {
   const dispatch = useDispatch()
-  const { assets, stats, loading, error } = useSelector((state) => state.assets)
-  
+  const router = useRouter()
+  const assets = useSelector((state) => state.assets.assets)
+  const stats = useSelector((state) => state.assets.stats)
+  const loading = useSelector((state) => state.assets.loading)
+  const error = useSelector((state) => state.assets.error)
   const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -37,6 +42,19 @@ export default function AssetsPage() {
   const [showAssetDetails, setShowAssetDetails] = useState(false)
   const [showAddAssetForm, setShowAddAssetForm] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+
+  // Check user role and redirect technicians
+  useEffect(() => {
+    const userData = localStorage.getItem("user")
+    if (userData) {
+      const user = JSON.parse(userData)
+      const userRole = user.role?.toLowerCase() || user.Role?.toLowerCase()
+      if (userRole === "technician") {
+        router.push("/dashboard/technician")
+        return
+      }
+    }
+  }, [router])
 
   // Load assets data
   const loadAssets = async () => {
@@ -47,12 +65,12 @@ export default function AssetsPage() {
         category: categoryFilter,
         status: statusFilter,
       }
-      
+
       await Promise.all([
         dispatch(fetchAssets(filters)).unwrap(),
         dispatch(fetchAssetStats()).unwrap()
       ])
-      
+
       toast.success("Assets loaded successfully")
     } catch (err) {
       console.error("Error loading assets:", err)
@@ -169,12 +187,18 @@ export default function AssetsPage() {
             onClose={() => setShowAddAssetForm(false)}
             onSubmit={async (assetData) => {
               try {
-                // This will be handled by the form component
-                console.log("New asset added:", assetData)
-                toast.success(`Asset ${assetData.equipmentName} added successfully!`)
-                await loadAssets() // Refresh the list
+                await dispatch(createNewAsset(assetData)).unwrap()
+                toast.success(`Asset ${assetData.name} added successfully!`)
+                setShowAddAssetForm(false) // Close the form
               } catch (error) {
-                toast.error("Failed to add asset")
+                console.error("Error creating asset:", error)
+                if (error.message?.includes("duplicate") || error.message?.includes("already exists")) {
+                  toast.error("Asset with this ID already exists")
+                } else if (error.message?.includes("validation")) {
+                  toast.error("Please check your input data")
+                } else {
+                  toast.error("Failed to create asset. Please try again.")
+                }
               }
             }}
           />
@@ -327,7 +351,7 @@ export default function AssetsPage() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
-                      {asset.nextMaintenance}
+                      {formatDate(asset.nextMaintenance)}
                     </div>
                   </TableCell>
                   <TableCell>

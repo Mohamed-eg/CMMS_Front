@@ -1,378 +1,613 @@
 "use client"
 
-import { useState, useCallback } from "react"
-import { useDispatch } from "react-redux"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent } from "@/components/ui/card"
-import { Upload, X, Camera, FileImage, AlertCircle, CheckCircle2 } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { toast } from "sonner"
+import { Plus, X, Upload, MapPin } from "lucide-react"
 
 export default function AddAssetForm({ isOpen, onClose, onSubmit }) {
-  const dispatch = useDispatch()
-  const [dragActive, setDragActive] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
   const [formData, setFormData] = useState({
-    equipmentName: "",
-    equipmentId: "",
-    stationName: "",
+    id: "",
+    name: "",
+    assetCode: "",
+    category: "",
+    location: "",
+    gpsCoordinates: "",
+    status: "Active",
+    lastMaintenance: "",
+    nextMaintenance: "",
+    condition: "Good",
+    serialNumber: "",
+    manufacturer: "",
+    installDate: "",
+    expectedLifespan: "",
+    usageHours: "",
+    flowRateAnomalies: "",
+    serviceFrequency: "",
     photos: [],
-  })
-
-  const [errors, setErrors] = useState({})
-
-  // Available station options
-  const stationOptions = [
-    "Al-Noor Gas Station - Riyadh",
-    "Al-Salam Gas Station - Jeddah",
-    "Al-Waha Gas Station - Dammam",
-    "Al-Fanar Gas Station - Mecca",
-    "Al-Reef Gas Station - Medina",
-  ]
-
-  // Handle form input changes
-  const handleInputChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: "" }))
-    }
-  }
-
-  // Auto-generate equipment ID based on name
-  const generateEquipmentId = (name) => {
-    if (!name) return ""
-    const prefix = name.toLowerCase().includes("pump")
-      ? "PUMP"
-      : name.toLowerCase().includes("tank")
-        ? "TANK"
-        : name.toLowerCase().includes("compressor")
-          ? "COMP"
-          : name.toLowerCase().includes("wash")
-            ? "WASH"
-            : "EQP"
-    const timestamp = Date.now().toString().slice(-4)
-    return `${prefix}-${timestamp}`
-  }
-
-  // Handle equipment name change and auto-generate ID
-  const handleEquipmentNameChange = (value) => {
-    handleInputChange("equipmentName", value)
-    if (value && !formData.equipmentId) {
-      handleInputChange("equipmentId", generateEquipmentId(value))
-    }
-  }
-
-  // Handle file upload
-  const handleFileUpload = useCallback((files) => {
-    const validFiles = Array.from(files).filter((file) => {
-      // Check file type
-      if (!file.type.startsWith("image/")) {
-        toast.error(`${file.name} is not an image file`)
-        return false
-      }
-      // Check file size (5MB limit)
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error(`${file.name} is too large (max 5MB)`)
-        return false
-      }
-      return true
-    })
-
-    if (validFiles.length > 0) {
-      const newPhotos = validFiles.map((file) => ({
-        id: Date.now() + Math.random(),
-        file,
-        preview: URL.createObjectURL(file),
-        name: file.name,
-        size: file.size,
-      }))
-
-      setFormData((prev) => ({
-        ...prev,
-        photos: [...prev.photos, ...newPhotos],
-      }))
-
-      toast.success(`${validFiles.length} photo(s) uploaded successfully`)
-    }
-  }, [])
-
-  // Handle drag and drop
-  const handleDrag = useCallback((e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true)
-    } else if (e.type === "dragleave") {
-      setDragActive(false)
-    }
-  }, [])
-
-  const handleDrop = useCallback(
-    (e) => {
-      e.preventDefault()
-      e.stopPropagation()
-      setDragActive(false)
-
-      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-        handleFileUpload(e.dataTransfer.files)
-      }
+    specifications: {
+      model: "",
+      capacity: "",
+      power: "",
+      flowRate: "",
+      accuracy: "",
+      material: "",
+      leakDetection: "",
+      agentType: "",
+      coverageArea: "",
+      dischargeTime: "",
+      fuelTypes: [],
+      efficiency: "",
+      pressure: "",
+      airDelivery: ""
     },
-    [handleFileUpload],
-  )
+    maintenanceHistory: []
+  })
+  const [loading, setLoading] = useState(false)
+  const [photoUrl, setPhotoUrl] = useState("")
+  const [newMaintenanceRecord, setNewMaintenanceRecord] = useState({
+    date: "",
+    type: "",
+    technician: "",
+    duration: ""
+  })
+  const [gettingLocation, setGettingLocation] = useState(false)
 
-  // Handle file input change
-  const handleFileInputChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      handleFileUpload(e.target.files)
-    }
-  }
-
-  // Remove photo
-  const removePhoto = (photoId) => {
-    setFormData((prev) => ({
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({
       ...prev,
-      photos: prev.photos.filter((photo) => photo.id !== photoId),
+      [field]: value
     }))
   }
 
-  // Validate form
-  const validateForm = () => {
-    const newErrors = {}
-
-    if (!formData.equipmentName.trim()) newErrors.equipmentName = "Equipment name is required"
-    if (!formData.equipmentId.trim()) newErrors.equipmentId = "Equipment ID is required"
-    if (!formData.stationName) newErrors.stationName = "Station name is required"
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+  const handleSpecificationChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      specifications: {
+        ...prev.specifications,
+        [field]: value
+      }
+    }))
   }
 
-  // Handle form submission
+  const addPhoto = () => {
+    if (photoUrl.trim()) {
+      setFormData(prev => ({
+        ...prev,
+        photos: [...prev.photos, photoUrl.trim()]
+      }))
+      setPhotoUrl("")
+    }
+  }
+
+  const removePhoto = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      photos: prev.photos.filter((_, i) => i !== index)
+    }))
+  }
+
+  const addMaintenanceRecord = () => {
+    if (newMaintenanceRecord.date && newMaintenanceRecord.type && newMaintenanceRecord.technician && newMaintenanceRecord.duration) {
+      setFormData(prev => ({
+        ...prev,
+        maintenanceHistory: [...prev.maintenanceHistory, { ...newMaintenanceRecord }]
+      }))
+      setNewMaintenanceRecord({ date: "", type: "", technician: "", duration: "" })
+    }
+  }
+
+  const removeMaintenanceRecord = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      maintenanceHistory: prev.maintenanceHistory.filter((_, i) => i !== index)
+    }))
+  }
+// Get current location
+const getCurrentLocation = () => {
+  if (!navigator.geolocation) {
+    toast.error("Geolocation is not supported by this browser")
+    return
+  }
+
+  setGettingLocation(true)
+  
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const { latitude, longitude } = position.coords
+      const coordinates = `${latitude.toFixed(6)}° N, ${longitude.toFixed(6)}° E`
+      handleInputChange("gpsCoordinates", coordinates)
+      toast.success("Current location captured successfully!")
+      setGettingLocation(false)
+    },
+    (error) => {
+      console.error("Error getting location:", error)
+      let errorMessage = "Failed to get current location"
+      
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          errorMessage = "Location access denied. Please allow location access and try again."
+          break
+        case error.POSITION_UNAVAILABLE:
+          errorMessage = "Location information unavailable. Please try again."
+          break
+        case error.TIMEOUT:
+          errorMessage = "Location request timed out. Please try again."
+          break
+        default:
+          errorMessage = "Failed to get current location. Please enter manually."
+      }
+      
+      toast.error(errorMessage)
+      setGettingLocation(false)
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 60000
+    }
+  )
+}
+ 
+
   const handleSubmit = async (e) => {
     e.preventDefault()
-
-    if (!validateForm()) {
-      toast.error("Please fill in all required fields")
+    
+    // Validate required fields
+    const requiredFields = ['id', 'name', 'assetCode', 'category', 'location', 'gpsCoordinates', 'status']
+    const missingFields = requiredFields.filter(field => !formData[field])
+    
+    if (missingFields.length > 0) {
+      toast.error(`Please fill in required fields: ${missingFields.join(', ')}`)
       return
     }
 
-    setIsSubmitting(true)
-
+    setLoading(true)
     try {
-      // Create asset data
-      const assetData = {
+      // Convert string values to appropriate types
+      const processedData = {
         ...formData,
-        createdAt: new Date().toISOString(),
-        status: "Active",
-        condition: "New",
+        usageHours: formData.usageHours ? Number(formData.usageHours) : null,
+        flowRateAnomalies: formData.flowRateAnomalies ? Number(formData.flowRateAnomalies) : null,
+        lastMaintenance: formData.lastMaintenance ? new Date(formData.lastMaintenance) : null,
+        nextMaintenance: formData.nextMaintenance ? new Date(formData.nextMaintenance) : null,
+        installDate: formData.installDate ? new Date(formData.installDate) : null,
+        maintenanceHistory: formData.maintenanceHistory.map(record => ({
+          ...record,
+          date: new Date(record.date)
+        }))
       }
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // Call parent callback
-      if (onSubmit) {
-        onSubmit(assetData)
-      }
-
-      toast.success("Asset added successfully!")
-
+      await onSubmit(processedData)
+      toast.success("Asset created successfully")
+      onClose()
       // Reset form
       setFormData({
-        equipmentName: "",
-        equipmentId: "",
-        stationName: "",
+        id: "",
+        name: "",
+        assetCode: "",
+        category: "",
+        location: "",
+        gpsCoordinates: "",
+        status: "Active",
+        lastMaintenance: "",
+        nextMaintenance: "",
+        condition: "Good",
+        serialNumber: "",
+        manufacturer: "",
+        installDate: "",
+        expectedLifespan: "",
+        usageHours: "",
+        flowRateAnomalies: "",
+        serviceFrequency: "",
         photos: [],
+        specifications: {
+          model: "",
+          capacity: "",
+          power: "",
+          flowRate: "",
+          accuracy: "",
+          material: "",
+          leakDetection: "",
+          agentType: "",
+          coverageArea: "",
+          dischargeTime: "",
+          fuelTypes: [],
+          efficiency: "",
+          pressure: "",
+          airDelivery: ""
+        },
+        maintenanceHistory: []
       })
-      setErrors({})
-
-      // Close form
-      onClose()
     } catch (error) {
-      console.error("Error adding asset:", error)
-      toast.error("Failed to add asset. Please try again.")
+      toast.error("Failed to create asset")
     } finally {
-      setIsSubmitting(false)
+      setLoading(false)
     }
-  }
-
-  // Format file size
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return "0 Bytes"
-    const k = 1024
-    const sizes = ["Bytes", "KB", "MB", "GB"]
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Camera className="h-5 w-5" />
-            Add New Asset
-          </DialogTitle>
-          <DialogDescription>
-            Register a new equipment asset in your gas station inventory. Fill out the required information below.
-          </DialogDescription>
+          <DialogTitle>Add New Asset</DialogTitle>
+          <DialogDescription>Create a new asset for your gas station inventory.</DialogDescription>
         </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Equipment Name */}
-          <div className="space-y-2">
-            <Label htmlFor="equipmentName">Equipment Name *</Label>
-            <Input
-              id="equipmentName"
-              placeholder="e.g., Fuel Pump #5, Storage Tank #3, Air Compressor"
-              value={formData.equipmentName}
-              onChange={(e) => handleEquipmentNameChange(e.target.value)}
-              className={errors.equipmentName ? "border-red-500" : ""}
-            />
-            {errors.equipmentName && (
-              <p className="text-sm text-red-500 flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {errors.equipmentName}
-              </p>
-            )}
-          </div>
-
-          {/* Equipment ID */}
-          <div className="space-y-2">
-            <Label htmlFor="equipmentId">Equipment ID *</Label>
-            <Input
-              id="equipmentId"
-              placeholder="e.g., PUMP-001, TANK-002, COMP-001"
-              value={formData.equipmentId}
-              onChange={(e) => handleInputChange("equipmentId", e.target.value)}
-              className={errors.equipmentId ? "border-red-500" : ""}
-            />
-            <p className="text-xs text-muted-foreground">
-              Auto-generated based on equipment name, but you can customize it
-            </p>
-            {errors.equipmentId && (
-              <p className="text-sm text-red-500 flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {errors.equipmentId}
-              </p>
-            )}
-          </div>
-
-          {/* Station Name */}
-          <div className="space-y-2">
-            <Label htmlFor="stationName">Station Name *</Label>
-            <Select value={formData.stationName} onValueChange={(value) => handleInputChange("stationName", value)}>
-              <SelectTrigger className={errors.stationName ? "border-red-500" : ""}>
-                <SelectValue placeholder="Select station where this equipment is located..." />
-              </SelectTrigger>
-              <SelectContent>
-                {stationOptions.map((station) => (
-                  <SelectItem key={station} value={station}>
-                    {station}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.stationName && (
-              <p className="text-sm text-red-500 flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {errors.stationName}
-              </p>
-            )}
-          </div>
-
-          {/* Photo Upload */}
-          <div className="space-y-4">
-            <Label>Equipment Photos</Label>
-            <p className="text-sm text-muted-foreground">
-              Upload photos of the equipment for identification and documentation purposes.
-            </p>
-
-            {/* Drag and Drop Zone */}
-            <div
-              className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-                dragActive ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:border-gray-400"
-              }`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-            >
-              <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <p className="text-lg font-medium text-gray-900 mb-2">Drag and drop photos here</p>
-              <p className="text-sm text-gray-500 mb-4">
-                or click to browse files (JPG, PNG, GIF, WebP - Max 5MB each)
-              </p>
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleFileInputChange}
-                className="hidden"
-                id="photo-upload"
-              />
-              <Button type="button" variant="outline" onClick={() => document.getElementById("photo-upload").click()}>
-                <FileImage className="mr-2 h-4 w-4" />
-                Choose Files
-              </Button>
+        <form onSubmit={handleSubmit}>
+          <div className="grid gap-6 py-4">
+            {/* Basic Information */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Basic Information</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="id">Asset ID *</Label>
+                  <Input
+                    id="id"
+                    value={formData.id}
+                    onChange={(e) => handleInputChange("id", e.target.value)}
+                    placeholder="AST-001"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="assetCode">Asset Code *</Label>
+                  <Input
+                    id="assetCode"
+                    value={formData.assetCode}
+                    onChange={(e) => handleInputChange("assetCode", e.target.value)}
+                    placeholder="PUMP-001"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Asset Name *</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => handleInputChange("name", e.target.value)}
+                    placeholder="Fuel Pump #1"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category *</Label>
+                  <Select value={formData.category} onValueChange={(value) => handleInputChange("category", value)} required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Fuel Dispensing">Fuel Dispensing</SelectItem>
+                      <SelectItem value="Storage">Storage</SelectItem>
+                      <SelectItem value="Safety">Safety</SelectItem>
+                      <SelectItem value="Utility">Utility</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location *</Label>
+                  <Input
+                    id="location"
+                    value={formData.location}
+                    onChange={(e) => handleInputChange("location", e.target.value)}
+                    placeholder="Pump Island A"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="gpsCoordinates">GPS Coordinates *</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="gpsCoordinates"
+                      value={formData.gpsCoordinates}
+                      onChange={(e) => handleInputChange("gpsCoordinates", e.target.value)}
+                      placeholder="24.7136° N, 46.6753° E"
+                      required
+                    />
+                    <Button
+                      type="button"
+                      onClick={getCurrentLocation}
+                      disabled={gettingLocation}
+                      variant="outline"
+                    >
+                      {gettingLocation ? "Getting..." : "Get Current Location"}
+                      <MapPin className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status *</Label>
+                  <Select value={formData.status} onValueChange={(value) => handleInputChange("status", value)} required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Active">Active</SelectItem>
+                      <SelectItem value="Maintenance Required">Maintenance Required</SelectItem>
+                      <SelectItem value="Out of Service">Out of Service</SelectItem>
+                      <SelectItem value="Inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="condition">Condition</Label>
+                  <Select value={formData.condition} onValueChange={(value) => handleInputChange("condition", value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select condition" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Excellent">Excellent</SelectItem>
+                      <SelectItem value="Good">Good</SelectItem>
+                      <SelectItem value="Fair">Fair</SelectItem>
+                      <SelectItem value="Poor">Poor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
 
-            {/* Photo Previews */}
-            {formData.photos.length > 0 && (
+            {/* Technical Details */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Technical Details</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="serialNumber">Serial Number</Label>
+                  <Input
+                    id="serialNumber"
+                    value={formData.serialNumber}
+                    onChange={(e) => handleInputChange("serialNumber", e.target.value)}
+                    placeholder="SN-2023-001"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="manufacturer">Manufacturer</Label>
+                  <Input
+                    id="manufacturer"
+                    value={formData.manufacturer}
+                    onChange={(e) => handleInputChange("manufacturer", e.target.value)}
+                    placeholder="Wayne Fueling Systems"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="installDate">Install Date</Label>
+                  <Input
+                    id="installDate"
+                    type="date"
+                    value={formData.installDate}
+                    onChange={(e) => handleInputChange("installDate", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="expectedLifespan">Expected Lifespan</Label>
+                  <Input
+                    id="expectedLifespan"
+                    value={formData.expectedLifespan}
+                    onChange={(e) => handleInputChange("expectedLifespan", e.target.value)}
+                    placeholder="10 years"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="usageHours">Usage Hours</Label>
+                  <Input
+                    id="usageHours"
+                    type="number"
+                    value={formData.usageHours}
+                    onChange={(e) => handleInputChange("usageHours", e.target.value)}
+                    placeholder="8760"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="flowRateAnomalies">Flow Rate Anomalies</Label>
+                  <Input
+                    id="flowRateAnomalies"
+                    type="number"
+                    value={formData.flowRateAnomalies}
+                    onChange={(e) => handleInputChange("flowRateAnomalies", e.target.value)}
+                    placeholder="2"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="serviceFrequency">Service Frequency</Label>
+                  <Input
+                    id="serviceFrequency"
+                    value={formData.serviceFrequency}
+                    onChange={(e) => handleInputChange("serviceFrequency", e.target.value)}
+                    placeholder="Monthly"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Maintenance Schedule */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Maintenance Schedule</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="lastMaintenance">Last Maintenance</Label>
+                  <Input
+                    id="lastMaintenance"
+                    type="date"
+                    value={formData.lastMaintenance}
+                    onChange={(e) => handleInputChange("lastMaintenance", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="nextMaintenance">Next Maintenance</Label>
+                  <Input
+                    id="nextMaintenance"
+                    type="date"
+                    value={formData.nextMaintenance}
+                    onChange={(e) => handleInputChange("nextMaintenance", e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Specifications */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Specifications</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="model">Model</Label>
+                  <Input
+                    id="model"
+                    value={formData.specifications.model}
+                    onChange={(e) => handleSpecificationChange("model", e.target.value)}
+                    placeholder="Wayne Ovation II"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="capacity">Capacity</Label>
+                  <Input
+                    id="capacity"
+                    value={formData.specifications.capacity}
+                    onChange={(e) => handleSpecificationChange("capacity", e.target.value)}
+                    placeholder="30,000 liters"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="power">Power</Label>
+                  <Input
+                    id="power"
+                    value={formData.specifications.power}
+                    onChange={(e) => handleSpecificationChange("power", e.target.value)}
+                    placeholder="1000 W"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="flowRate">Flow Rate</Label>
+                  <Input
+                    id="flowRate"
+                    value={formData.specifications.flowRate}
+                    onChange={(e) => handleSpecificationChange("flowRate", e.target.value)}
+                    placeholder="40 L/min"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="accuracy">Accuracy</Label>
+                  <Input
+                    id="accuracy"
+                    value={formData.specifications.accuracy}
+                    onChange={(e) => handleSpecificationChange("accuracy", e.target.value)}
+                    placeholder="±0.3%"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="material">Material</Label>
+                  <Input
+                    id="material"
+                    value={formData.specifications.material}
+                    onChange={(e) => handleSpecificationChange("material", e.target.value)}
+                    placeholder="Fiberglass"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Photos */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Photos</h3>
               <div className="space-y-2">
-                <Label>Uploaded Photos ({formData.photos.length})</Label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {formData.photos.map((photo) => (
-                    <Card key={photo.id} className="relative">
-                      <CardContent className="p-2">
-                        <img
-                          src={photo.preview || "/placeholder.svg"}
-                          alt={photo.name}
-                          className="w-full h-24 object-cover rounded"
-                        />
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter photo URL"
+                    value={photoUrl}
+                    onChange={(e) => setPhotoUrl(e.target.value)}
+                  />
+                  <Button type="button" onClick={addPhoto} variant="outline">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {formData.photos.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {formData.photos.map((photo, index) => (
+                      <div key={index} className="relative">
+                        <img src={photo} alt={`Asset photo ${index + 1}`} className="w-full h-20 object-cover rounded" />
                         <Button
                           type="button"
-                          variant="destructive"
                           size="sm"
-                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
-                          onClick={() => removePhoto(photo.id)}
+                          variant="destructive"
+                          className="absolute top-1 right-1 h-6 w-6 p-0"
+                          onClick={() => removePhoto(index)}
                         >
                           <X className="h-3 w-3" />
                         </Button>
-                        <div className="mt-1">
-                          <p className="text-xs font-medium truncate">{photo.name}</p>
-                          <p className="text-xs text-muted-foreground">{formatFileSize(photo.size)}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* Form Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+            {/* Maintenance History */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Maintenance History</h3>
+              <div className="space-y-2">
+                <div className="grid grid-cols-4 gap-2">
+                  <Input
+                    placeholder="Date"
+                    type="date"
+                    value={newMaintenanceRecord.date}
+                    onChange={(e) => setNewMaintenanceRecord(prev => ({ ...prev, date: e.target.value }))}
+                  />
+                  <Input
+                    placeholder="Type"
+                    value={newMaintenanceRecord.type}
+                    onChange={(e) => setNewMaintenanceRecord(prev => ({ ...prev, type: e.target.value }))}
+                  />
+                  <Input
+                    placeholder="Technician"
+                    value={newMaintenanceRecord.technician}
+                    onChange={(e) => setNewMaintenanceRecord(prev => ({ ...prev, technician: e.target.value }))}
+                  />
+                  <Input
+                    placeholder="Duration"
+                    value={newMaintenanceRecord.duration}
+                    onChange={(e) => setNewMaintenanceRecord(prev => ({ ...prev, duration: e.target.value }))}
+                  />
+                </div>
+                <Button type="button" onClick={addMaintenanceRecord} variant="outline">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Record
+                </Button>
+                {formData.maintenanceHistory.length > 0 && (
+                  <div className="space-y-2">
+                    {formData.maintenanceHistory.map((record, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 border rounded">
+                        <span className="text-sm">{record.date}</span>
+                        <span className="text-sm">{record.type}</span>
+                        <span className="text-sm">{record.technician}</span>
+                        <span className="text-sm">{record.duration}</span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => removeMaintenanceRecord(index)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Adding Asset...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                  Add Asset
-                </>
-              )}
+            <Button type="submit" disabled={loading}>
+              {loading ? "Creating..." : "Create Asset"}
             </Button>
           </div>
         </form>

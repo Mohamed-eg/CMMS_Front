@@ -35,19 +35,37 @@ import { toast } from "sonner"
 import { fetchWorkOrders, deleteWorkOrders } from "@/lib/features/workOrders/workOrdersSlice"
 import { getWorkOrderById } from "@/lib/api/workorders"
 import { formatDate } from "@/lib/helper"
+import { useRouter } from "next/navigation"
 //import { buildApiUrl, getAuthHeaders } from "@/lib/config/api"
 
 export default function WorkOrdersPage() {
   const dispatch = useDispatch()
-  const { workOrders, loading, error } = useSelector((state) => state.workOrders || {})
+  const router = useRouter()
+  const workOrders = useSelector((state) => state.workOrders.workOrders)
+  const loading = useSelector((state) => state.workOrders.loading)
+  const error = useSelector((state) => state.workOrders.error)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
-  const [showForm, setShowForm] = useState(false)
+  const [showWorkOrderForm, setShowWorkOrderForm] = useState(false)
+  const [selectedWorkOrder, setSelectedWorkOrder] = useState(null)
   const [showEditForm, setShowEditForm] = useState(false)
   const [editWorkOrder, setEditWorkOrder] = useState(null)
   const [editLoading, setEditLoading] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+
+  // Check user role and redirect technicians
+  useEffect(() => {
+    const userData = localStorage.getItem("user")
+    if (userData) {
+      const user = JSON.parse(userData)
+      const userRole = user.role?.toLowerCase() || user.Role?.toLowerCase()
+      if (userRole === "technician") {
+        router.push("/dashboard/technician")
+        return
+      }
+    }
+  }, [router])
 
   // Mock data for development
   const mockWorkOrders = [
@@ -218,7 +236,7 @@ export default function WorkOrdersPage() {
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
             Refresh
           </Button>
-          <Button onClick={() => setShowForm(true)}>
+          <Button onClick={() => setShowWorkOrderForm(true)}>
             <Plus className="h-4 w-4 mr-2" />
             New Work Order
           </Button>
@@ -466,13 +484,13 @@ export default function WorkOrdersPage() {
       </Card>
 
       {/* Work Order Form Modal */}
-      {showForm && (
+      {showWorkOrderForm && (
         <WorkOrderForm
-          isOpen={showForm}
-          onClose={() => setShowForm(false)}
+          isOpen={showWorkOrderForm}
+          onClose={() => setShowWorkOrderForm(false)}
           onSubmit={(data) => {
             console.log("Work order submitted:", data)
-            setShowForm(false)
+            setShowWorkOrderForm(false)
             toast.success("Work order created successfully")
           }}
         />

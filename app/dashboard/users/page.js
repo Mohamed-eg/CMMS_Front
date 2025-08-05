@@ -23,8 +23,10 @@ import { fetchUsers, addUser, deleteUser, updateUser, setSearchTerm, setRoleFilt
 import UserEditForm from "@/components/user-edit-form"
 import { toast } from "sonner"
 import { formatDate } from "@/lib/helper"
+import { useRouter } from "next/navigation"
 export default function UsersPage() {
   const dispatch = useDispatch()
+  const router = useRouter()
   const users = useSelector((state) => state.users.filteredUsers)
   const loading = useSelector((state) => state.users.loading)
   const error = useSelector((state) => state.users.error)
@@ -39,9 +41,17 @@ export default function UsersPage() {
   useEffect(() => {
     const userData = localStorage.getItem("user")
     if (userData) {
-      setCurrentUser(JSON.parse(userData))
+      const user = JSON.parse(userData)
+      setCurrentUser(user)
+      
+      // Check if user is technician and redirect if necessary
+      const userRole = user.role?.toLowerCase() || user.Role?.toLowerCase()
+      if (userRole === "technician") {
+        router.push("/dashboard/technician")
+        return
+      }
     }
-  }, [])
+  }, [router])
 
   // Load users data
   useEffect(() => {
