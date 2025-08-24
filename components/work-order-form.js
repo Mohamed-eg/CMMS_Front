@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useDispatch } from "react-redux"
-import { X, Upload, Search, Check, Camera, FileText } from "lucide-react"
+import { X, Upload, Search, Check, Camera, FileText, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,6 +15,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { submitWorkOrder } from "@/lib/features/workOrders/workOrdersSlice"
 import { searchAssets } from "@/lib/api/assets"
+import { searchUsers } from "@/lib/api/users"
 import { toast } from "sonner"
 import { Calendar } from "@/components/ui/calendar"
 import { format } from "date-fns"
@@ -50,6 +51,18 @@ export function WorkOrderForm({ isOpen, onClose }) {
   const [isSearching, setIsSearching] = useState(false)
   const [showEquipmentSearch, setShowEquipmentSearch] = useState(false)
   const [selectedEquipment, setSelectedEquipment] = useState(null)
+  
+  // Equipment ID search states
+  const [equipmentIdInput, setEquipmentIdInput] = useState("")
+  const [isSearchingById, setIsSearchingById] = useState(false)
+  
+  // User search states
+  const [userSearchTerm, setUserSearchTerm] = useState("")
+  const [userSearchResults, setUserSearchResults] = useState([])
+  const [isUserSearching, setIsUserSearching] = useState(false)
+  const [showUserSearch, setShowUserSearch] = useState(false)
+  const [selectedUser, setSelectedUser] = useState(null)
+  
   const [photos, setPhotos] = useState([])
   const [dragActive, setDragActive] = useState(false)
   const [errors, setErrors] = useState({})
@@ -66,6 +79,32 @@ export function WorkOrderForm({ isOpen, onClose }) {
     notes: "",
     dueDate: "",
   })
+
+  // Auto-fill user data when component mounts
+  useEffect(() => {
+    const userData = localStorage.getItem("user")
+    if (userData) {
+      try {
+        const user = JSON.parse(userData)
+        const fullName = user.name || [user.FirstName, user.LastName].filter(Boolean).join(" ") || user.email
+        const contactInfo = user.phone || user.Phone || user.email || user.Email || ""
+        
+        setFormData(prev => ({
+          ...prev,
+          Requested_By: fullName,
+          Contact_Info: contactInfo
+        }))
+        
+        setSelectedUser({
+          id: user.id || user._id,
+          name: fullName,
+          contactInfo: contactInfo
+        })
+      } catch (error) {
+        console.error("Error parsing user data:", error)
+      }
+    }
+  }, [])
 
   // Debounced search function
   const debouncedSearch = useCallback(
@@ -100,12 +139,54 @@ export function WorkOrderForm({ isOpen, onClose }) {
     setSelectedEquipment(equipment)
     setFormData((prev) => ({
       ...prev,
-      Equipment_ID: equipment.id,
-      Station_Name: equipment.station || "",
+      Equipment_ID: equipment.id || equipment._id || equipment.assetCode || "",
+      Station_Name: equipment.station || equipment.stationName || equipment.Station_Name || equipment.location || "",
     }))
     setShowEquipmentSearch(false)
     setSearchTerm("")
-    setErrors((prev) => ({ ...prev, Equipment_ID: "" }))
+    setErrors((prev) => ({ ...prev, Equipment_ID: "", Station_Name: "" }))
+  }
+
+  // User search function
+  const handleUserSearch = useCallback(async (term) => {
+    if (!term.trim()) {
+      setUserSearchResults([])
+      return
+    }
+
+    setIsUserSearching(true)
+    try {
+      const results = await searchUsers(term)
+      setUserSearchResults(results || [])
+    } catch (error) {
+      console.error("User search error:", error)
+      toast.error("Failed to search users")
+      setUserSearchResults([])
+    } finally {
+      setIsUserSearching(false)
+    }
+  }, [])
+
+  // Handle user selection
+  const handleUserSelect = (user) => {
+    const fullName = user.name || [user.FirstName, user.LastName].filter(Boolean).join(" ") || user.email
+    const contactInfo = user.phone || user.Phone || user.email || user.Email || ""
+    
+    setSelectedUser({
+      id: user.id || user._id,
+      name: fullName,
+      contactInfo: contactInfo
+    })
+    
+    setFormData(prev => ({
+      ...prev,
+      Requested_By: fullName,
+      Contact_Info: contactInfo
+    }))
+    
+    setShowUserSearch(false)
+    setUserSearchTerm("")
+    setErrors(prev => ({ ...prev, Requested_By: "", Contact_Info: "" }))
   }
 
   // Handle form input changes
@@ -192,8 +273,9 @@ export function WorkOrderForm({ isOpen, onClose }) {
     try {
       const workOrderData = {
         ...formData,
-        Equipment_ID: selectedEquipment?.id || "",
-        title: selectedEquipment?.name || "",
+        Equipment_ID: selectedEquipment?.id || selectedEquipment?._id || selectedEquipment?.assetCode || formData.Equipment_ID,
+        Station_Name: selectedEquipment?.station || selectedEquipment?.stationName || selectedEquipment?.Station_Name || formData.Station_Name,
+        title: selectedEquipment?.name || selectedEquipment?.title || "Equipment Issue",
         photos: photos.map((photo) => ({
           name: photo.name,
           size: photo.size,
@@ -237,11 +319,63 @@ export function WorkOrderForm({ isOpen, onClose }) {
       dueDate: "",
     })
     setSelectedEquipment(null)
+    setSelectedUser(null)
     setPhotos([])
     setSearchTerm("")
     setSearchResults([])
+    setUserSearchTerm("")
+    setUserSearchResults([])
+    setEquipmentIdInput("")
     setErrors({})
     onClose()
+  }
+
+  // Search equipment by ID
+  const searchEquipmentById = async () => {
+    if (!equipmentIdInput.trim()) {
+      toast.error("Please enter an equipment ID")
+      return
+    }
+
+    setIsSearchingById(true)
+    try {
+      const response = await fetch(`https://cmms-back.vercel.app/api/assets/${equipmentIdInput.trim()}`)
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          toast.error("Equipment not found")
+        } else {
+          toast.error("Failed to fetch equipment data")
+        }
+        return
+      }
+
+      const equipment = await response.json()
+      
+      // Set the selected equipment
+      setSelectedEquipment(equipment)
+      
+      // Update form data
+      setFormData(prev => ({
+        ...prev,
+        Equipment_ID: equipment.id || equipment._id || equipment.assetCode || equipmentIdInput.trim(),
+        Station_Name: equipment.station || equipment.stationName || equipment.Station_Name || equipment.location || "",
+      }))
+      
+      // Clear errors
+      setErrors(prev => ({ ...prev, Equipment_ID: "", Station_Name: "" }))
+      
+      // Clear the input
+      setEquipmentIdInput("")
+      
+      toast.success("Equipment found and fields updated!")
+      
+    } catch (error) {
+      console.error("Error searching equipment by ID:", error)
+      toast.error("Failed to fetch equipment data. Please try again.")
+    } finally {
+      setIsSearchingById(false)
+    }
   }
 
   return (
@@ -260,13 +394,14 @@ export function WorkOrderForm({ isOpen, onClose }) {
             <Label htmlFor="equipment" className="text-sm font-medium">
               Equipment ID *
             </Label>
+            <div className="flex gap-2">
             <Popover open={showEquipmentSearch} onOpenChange={setShowEquipmentSearch}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   role="combobox"
                   aria-expanded={showEquipmentSearch}
-                  className={`w-full justify-between ${errors.Equipment_ID ? "border-red-500" : ""}`}
+                    className={`flex-1 justify-between ${errors.Equipment_ID ? "border-red-500" : ""}`}
                 >
                   {selectedEquipment ? (
                     <div className="flex items-center gap-2">
@@ -274,9 +409,9 @@ export function WorkOrderForm({ isOpen, onClose }) {
                         {equipmentIcons[selectedEquipment.type] || equipmentIcons.default}
                       </span>
                       <div className="text-left">
-                        <div className="font-medium">{selectedEquipment.id}</div>
-                        <div className="text-xs text-muted-foreground">{selectedEquipment.name}</div>
-                      </div>
+                          <div className="font-medium">{selectedEquipment.id || selectedEquipment._id || selectedEquipment.assetCode}</div>
+                          <div className="text-xs text-muted-foreground">{selectedEquipment.name || selectedEquipment.title}</div>
+                        </div>
                     </div>
                   ) : (
                     <span className="text-muted-foreground">Search and select equipment...</span>
@@ -293,30 +428,39 @@ export function WorkOrderForm({ isOpen, onClose }) {
                   />
                   <CommandList>
                     {isSearching ? (
-                      <div className="p-4 text-center text-sm text-muted-foreground">Searching...</div>
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                            Loading...
+                          </div>
+                        </div>
                     ) : searchResults.length === 0 && searchTerm ? (
                       <CommandEmpty>No equipment found.</CommandEmpty>
+                      ) : searchResults.length === 0 && !searchTerm ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                          Start typing to search equipment...
+                        </div>
                     ) : (
                       <CommandGroup>
                         {searchResults.map((equipment) => (
                           <CommandItem
-                            key={equipment.id}
-                            value={equipment.id}
+                              key={equipment.id || equipment._id || equipment.assetCode}
+                              value={equipment.id || equipment._id || equipment.assetCode}
                             onSelect={() => handleEquipmentSelect(equipment)}
                             className="flex items-center gap-3 p-3"
                           >
                             <span className="text-lg">{equipmentIcons[equipment.type] || equipmentIcons.default}</span>
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
-                                <span className="font-medium">{equipment.id}</span>
+                                  <span className="font-medium">{equipment.id || equipment._id || equipment.assetCode}</span>
                                 <Badge variant="secondary" className="text-xs">
-                                  {equipment.type}
+                                    {equipment.type || equipment.category}
                                 </Badge>
+                                </div>
+                                <div className="text-sm text-muted-foreground">{equipment.name || equipment.title}</div>
+                                <div className="text-xs text-muted-foreground">{equipment.station || equipment.stationName || equipment.Station_Name || "No station assigned"}</div>
                               </div>
-                              <div className="text-sm text-muted-foreground">{equipment.name}</div>
-                              <div className="text-xs text-muted-foreground">{equipment.station}</div>
-                            </div>
-                            {selectedEquipment?.id === equipment.id && <Check className="h-4 w-4 text-blue-600" />}
+                              {selectedEquipment?.id === (equipment.id || equipment._id || equipment.assetCode) && <Check className="h-4 w-4 text-blue-600" />}
                           </CommandItem>
                         ))}
                       </CommandGroup>
@@ -325,6 +469,42 @@ export function WorkOrderForm({ isOpen, onClose }) {
                 </Command>
               </PopoverContent>
             </Popover>
+              
+              {/* Equipment ID Search Button */}
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter Equipment ID"
+                  value={equipmentIdInput}
+                  onChange={(e) => setEquipmentIdInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      searchEquipmentById()
+                    }
+                  }}
+                  className="w-40"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={searchEquipmentById}
+                  disabled={isSearchingById || !equipmentIdInput.trim()}
+                  className="px-3"
+                >
+                  {isSearchingById ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                      Search
+                    </>
+                  ) : (
+                    <>
+                      <Search className="h-4 w-4 mr-2" />
+                      Search
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
             {errors.Equipment_ID && <p className="text-sm text-red-600">{errors.Equipment_ID}</p>}
           </div>
 
@@ -337,9 +517,16 @@ export function WorkOrderForm({ isOpen, onClose }) {
               id="Station_Name"
               value={formData.Station_Name}
               onChange={(e) => handleInputChange("Station_Name", e.target.value)}
-              placeholder="Enter station name"
+              placeholder={selectedEquipment ? "Auto-filled from equipment" : "Enter station name or select equipment first"}
               className={errors.Station_Name ? "border-red-500" : ""}
+              readOnly={!!selectedEquipment}
             />
+            {selectedEquipment && (
+              <p className="text-xs text-blue-600 flex items-center gap-1">
+                <Check className="h-3 w-3" />
+                Auto-filled from selected equipment
+              </p>
+            )}
             {errors.Station_Name && <p className="text-sm text-red-600">{errors.Station_Name}</p>}
           </div>
 
@@ -403,13 +590,84 @@ export function WorkOrderForm({ isOpen, onClose }) {
               <Label htmlFor="Requested_By" className="text-sm font-medium">
                 Requested By *
               </Label>
-              <Input
-                id="Requested_By"
-                value={formData.Requested_By}
-                onChange={(e) => handleInputChange("Requested_By", e.target.value)}
-                placeholder="Your name"
-                className={errors.Requested_By ? "border-red-500" : ""}
-              />
+              <Popover open={showUserSearch} onOpenChange={setShowUserSearch}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={showUserSearch}
+                    className={`w-full justify-between ${errors.Requested_By ? "border-red-500" : ""}`}
+                  >
+                    {selectedUser ? (
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-blue-600" />
+                        <div className="text-left">
+                          <div className="font-medium">{selectedUser.name}</div>
+                          <div className="text-xs text-muted-foreground">{selectedUser.contactInfo}</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">Search and select user...</span>
+                    )}
+                    <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command>
+                    <CommandInput
+                      placeholder="Search users by name, email, or role..."
+                      value={userSearchTerm}
+                      onValueChange={(value) => {
+                        setUserSearchTerm(value)
+                        handleUserSearch(value)
+                      }}
+                    />
+                    <CommandList>
+                      {isUserSearching ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                            Loading...
+                          </div>
+                        </div>
+                      ) : userSearchResults.length === 0 && userSearchTerm ? (
+                        <CommandEmpty>No users found.</CommandEmpty>
+                      ) : userSearchResults.length === 0 && !userSearchTerm ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                          Start typing to search users...
+                        </div>
+                      ) : (
+                        <CommandGroup>
+                          {userSearchResults.map((user) => {
+                            const fullName = user.name || [user.FirstName, user.LastName].filter(Boolean).join(" ") || user.email
+                            const contactInfo = user.phone || user.Phone || user.email || user.Email || ""
+                            return (
+                              <CommandItem
+                                key={user.id || user._id}
+                                value={user.id || user._id}
+                                onSelect={() => handleUserSelect(user)}
+                                className="flex items-center gap-3 p-3"
+                              >
+                                <User className="h-4 w-4 text-blue-600" />
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">{fullName}</span>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {user.role || user.Role || "User"}
+                                    </Badge>
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">{contactInfo}</div>
+                                </div>
+                                {selectedUser?.id === (user.id || user._id) && <Check className="h-4 w-4 text-blue-600" />}
+                              </CommandItem>
+                            )
+                          })}
+                        </CommandGroup>
+                      )}
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               {errors.Requested_By && <p className="text-sm text-red-600">{errors.Requested_By}</p>}
             </div>
 

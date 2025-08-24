@@ -7,20 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Search, Eye, Edit, Trash2, UserPlus, Shield, User, Mail, Phone, RefreshCw,  Calendar, } from "lucide-react"
+import { Search, Eye, Edit, Trash2, UserPlus, Shield, User, Mail, Phone, RefreshCw, Calendar } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
 import { fetchUsers, addUser, deleteUser, updateUser, setSearchTerm, setRoleFilter, setStatusFilter } from "@/lib/features/users/usersSlice"
 import UserEditForm from "@/components/user-edit-form"
+import AddUserForm from "@/components/add-user-form"
 import { toast } from "sonner"
 import { formatDate } from "@/lib/helper"
 import { useRouter } from "next/navigation"
@@ -35,6 +27,7 @@ export default function UsersPage() {
   const statusFilter = useSelector((state) => state.users.statusFilter)
   const [selectedUser, setSelectedUser] = useState(null)
   const [showEditForm, setShowEditForm] = useState(false)
+  const [showAddUserForm, setShowAddUserForm] = useState(false)
   const [currentUser, setCurrentUser] = useState(null)
 
   // Get current user from localStorage
@@ -132,31 +125,13 @@ console.log(users)
   const handleRefresh = () => {
     dispatch(fetchUsers())
   }
-  const handleCreateUser = async (formData) => {
+  const handleCreateUser = async (userData) => {
     try {
-      const userData = {
-        firstName: formData.get("firstName"),
-        lastName: formData.get("lastName"),
-        email: formData.get("email"),
-        phone: formData.get("phone"),
-        role: formData.get("role"),
-        status: formData.get("status"),
-        station_Name: formData.get("station_Name"),
-        password: formData.get("password"),
-      }
       await dispatch(addUser(userData)).unwrap()
-      toast.success("User created successfully")
       dispatch(fetchUsers())
     } catch (err) {
       console.error("Error creating user:", err)
-      // Provide more specific error messages
-      if (err.message?.includes("duplicate") || err.message?.includes("User already exists!")) {
-        toast.error("User with this email already exists")
-      } else if (err.message?.includes("validation")) {
-        toast.error("Please check your input data")
-      } else {
-        toast.error("Failed to create user. Please try again.")
-      }
+      throw err // Re-throw to let the component handle the error
     }
   }
   const handleDeleteUserRedux = async (id) => {
@@ -208,89 +183,10 @@ console.log(users)
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Add User
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Add New User</DialogTitle>
-                <DialogDescription>Create a new user account for your gas station staff.</DialogDescription>
-              </DialogHeader>
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                handleCreateUser(formData);
-              }}>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="firstName">First Name</Label>
-                      <Input id="firstName" name="firstName" placeholder="Ahmed" required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input id="lastName" name="lastName" placeholder="Al-Rashid" required />
-                    </div>
-                    <div className="space-y-2 col-span-2">
-                      <Label htmlFor="station_Name">Station Name</Label>
-                      <Input id="station_Name" name="station_Name" placeholder="Search station name... (type to search)" required />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input id="email" name="email" type="email" placeholder="user@gasstation.sa" required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">phone</Label>
-                      <Input id="phone" name="phone" placeholder="+966 50 123 4567" required />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="role">role</Label>
-                      <Select name="role" required>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Admin">Admin</SelectItem>
-                          <SelectItem value="Manager">Manager</SelectItem>
-                          <SelectItem value="Technician">Technician</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="status">Status</Label>
-                      <Select name="status" defaultValue="Active" required>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Active">Active</SelectItem>
-                          <SelectItem value="Inactive">Inactive</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Temporary Password</Label>
-                    <Input id="password" name="password" type="password" placeholder="Temporary password" required />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline">
-                    Cancel
-                  </Button>
-                  <Button type="submit">Create User</Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <Button onClick={() => setShowAddUserForm(true)}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Add User
+          </Button>
         </div>
       </div>
 
@@ -374,7 +270,7 @@ console.log(users)
                 <SelectValue placeholder="Filter by role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
+                <SelectItem value="All">All Roles</SelectItem>
                 <SelectItem value="Admin">Admin</SelectItem>
                 <SelectItem value="Manager">Manager</SelectItem>
                 <SelectItem value="Technician">Technician</SelectItem>
@@ -385,7 +281,7 @@ console.log(users)
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="All">All Status</SelectItem>
                 <SelectItem value="Active">Active</SelectItem>
                 <SelectItem value="Inactive">Inactive</SelectItem>
                 <SelectItem value="Suspended">Suspended</SelectItem>
@@ -485,6 +381,11 @@ console.log(users)
           </Table>
         </CardContent>
       </Card>
+      <AddUserForm
+        isOpen={showAddUserForm}
+        onClose={() => setShowAddUserForm(false)}
+        onSubmit={handleCreateUser}
+      />
       <UserEditForm
         isOpen={showEditForm}
         onClose={() => {

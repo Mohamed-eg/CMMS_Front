@@ -141,8 +141,10 @@ export default function LoginPage() {
 
           <div className="mt-6 text-center">
             <div className="text-sm text-gray-600">
-              <p className="mb-2">🔗 Connected to Backend API</p>
-              <p className="text-xs text-gray-500">Server: cmms-back.vercel.app</p>
+              <p className="mb-2">Admin user: mhmdalshayb39@gmail.com</p>
+              <p className="text-xs text-gray-500">Password: 123123123</p>
+              <p className="mb-2">Technician user: mohamed@mohamed.com</p>
+              <p className="text-xs text-gray-500">Password: 123123123</p>
             </div>
           </div>
 

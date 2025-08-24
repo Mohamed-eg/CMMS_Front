@@ -38,13 +38,13 @@ export default function DashboardLayout({ children }) {
     // Check user role and redirect accordingly
     const userRole = userObj.role?.toLowerCase() || userObj.Role?.toLowerCase()
     
-    if (userRole === "technician") {
+    if (userRole === "technician" || userRole === "Technician") {
       // Redirect technicians to their dedicated page
       if (window.location.pathname !== "/dashboard/technician") {
         router.push("/dashboard/technician")
         return
       }
-    } else if (userRole === "admin" || userRole === "manager" || userRole === "maintenance manager") {
+    } else if (userRole === "admin" || userRole === "manager" || userRole === "Manager" || userRole === "Admin") {
       // Admin/Manager can access full dashboard
       if (window.location.pathname === "/dashboard/technician") {
         router.push("/dashboard")
@@ -83,7 +83,7 @@ export default function DashboardLayout({ children }) {
 
   // Check if user is technician
   const userRole = user.role?.toLowerCase() || user.Role?.toLowerCase()
-  const isTechnician = userRole === "technician"
+  const isTechnician = userRole === "technician" || userRole === "Technician"
 
   // If technician, render technician layout
   if (isTechnician) {
@@ -148,7 +148,7 @@ export default function DashboardLayout({ children }) {
                 onClick={() => setIsOpen(!isOpen)}
               >
                 <User className="h-4 w-4" />
-                {user.firstName || user.FirstName || "User"}
+                {user.firstName || "User"}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 z-100" sideOffset={5}>

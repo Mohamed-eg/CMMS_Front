@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { useDispatch } from "react-redux"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -10,8 +10,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Upload, X, FileImage, AlertCircle, CheckCircle2, Building } from "lucide-react"
+import { Upload, X, FileImage, AlertCircle, CheckCircle2, Building, Search, User, Package, Check } from "lucide-react"
 import { toast } from "sonner"
+import { Badge } from "@/components/ui/badge"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { searchAssets } from "@/lib/api/assets"
+import { searchUsers } from "@/lib/api/users"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 export default function AddStationForm({ isOpen, onClose, onSubmit }) {
   const dispatch = useDispatch()
@@ -19,36 +24,60 @@ export default function AddStationForm({ isOpen, onClose, onSubmit }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [formData, setFormData] = useState({
-    // Basic Information
-    stationName: "",
-    stationCode: "",
+    name: "",
+    code: "",
     licenseNumber: "",
-    stationType: "",
-
-    // Location Information
+    type: "",
+    location: "",
     address: "",
     city: "",
     region: "",
     postalCode: "",
     gpsCoordinates: "",
     totalArea: "",
-
-    // Contact Information
     phone: "",
     email: "",
     managerName: "",
-
-    // Operational Information
+    managerEmail: "", // Add manager email field
+    capacity: "",
+    fuelTypes: [],
+    services: [],
     operatingHours: "",
     fuelBrands: [],
     establishedDate: "",
-
-    // Documentation
+    emergencyContact: "",
+    notes: "",
+    assetIds: [],
+    managerUserId: "",
+    technicianUserIds: [],
     photos: [],
-    documents: [],
+    documents: []
   })
 
   const [errors, setErrors] = useState({})
+
+  // Search state
+  const [assetQuery, setAssetQuery] = useState("")
+  const [assetResults, setAssetResults] = useState([])
+  const [assetsLoading, setAssetsLoading] = useState(false)
+  const [selectedAssets, setSelectedAssets] = useState([]) // [{id,name,category}]
+  
+  // User search states
+  const [managerQuery, setManagerQuery] = useState("")
+  const [managerResults, setManagerResults] = useState([])
+  const [managersLoading, setManagersLoading] = useState(false)
+  const [selectedUser, setSelectedUser] = useState(null) // {id, name, email}
+  
+  const [technicianQuery, setTechnicianQuery] = useState("")
+  const [technicianResults, setTechnicianResults] = useState([])
+  const [techniciansLoading, setTechniciansLoading] = useState(false)
+  const [selectedTechnicians, setSelectedTechnicians] = useState([])
+
+  // Manager search states for Station Manager Name
+  const [stationManagerQuery, setStationManagerQuery] = useState("")
+  const [stationManagerResults, setStationManagerResults] = useState([])
+  const [showStationManagerSearch, setShowStationManagerSearch] = useState(false)
+  const [selectedStationManager, setSelectedStationManager] = useState(null)
 
   // Available options
   const stationTypes = [
@@ -78,6 +107,90 @@ export default function AddStationForm({ isOpen, onClose, onSubmit }) {
 
   const fuelBrandOptions = ["Saudi Aramco", "ADNOC", "Shell", "Mobil", "Total", "BP"]
 
+  // Fetch managers when form opens
+  const fetchManagers = useCallback(async () => {
+    try {
+      const response = await fetch('https://cmms-back.vercel.app/api/users/managers')
+      if (!response.ok) {
+        throw new Error('Failed to fetch managers')
+      }
+      const data = await response.json()
+      const managers = data.managers || []
+      
+      // Store managers in localStorage
+      localStorage.setItem('stationManagers', JSON.stringify(managers))
+      
+      console.log('Managers fetched and stored:', managers)
+    } catch (error) {
+      console.error('Error fetching managers:', error)
+      toast.error('Failed to fetch managers list')
+    }
+  }, [])
+
+  // Load managers from localStorage
+  const loadManagersFromStorage = useCallback(() => {
+    try {
+      const storedManagers = localStorage.getItem('stationManagers')
+      if (storedManagers) {
+        return JSON.parse(storedManagers)
+      }
+    } catch (error) {
+      console.error('Error loading managers from storage:', error)
+    }
+    return []
+  }, [])
+
+  // Search managers in localStorage
+  const searchStationManagers = useCallback((query) => {
+    if (!query.trim()) {
+      setStationManagerResults([])
+      return
+    }
+
+    const managers = loadManagersFromStorage()
+    console.log(managers)
+    const filteredManagers = managers.filter(manager => {
+      const fullName = `${manager.firstName || ''} ${manager.lastName || ''}`.toLowerCase()
+      const email = (manager.email || '').toLowerCase()
+      const queryLower = query.toLowerCase()
+      
+      return fullName.includes(queryLower) || email.includes(queryLower)
+    })
+    console.log(filteredManagers)
+    setStationManagerResults(filteredManagers)
+  }, [loadManagersFromStorage])
+
+  // Handle station manager selection
+  const handleStationManagerSelect = (manager) => {
+    const fullName = `${manager.firstName || ''} ${manager.lastName || ''}`.trim()
+    setSelectedStationManager(manager)
+    setFormData(prev => ({
+      ...prev,
+      managerName: fullName,
+      managerEmail: manager.email || ''
+    }))
+    setShowStationManagerSearch(false)
+    setStationManagerQuery("")
+    setErrors(prev => ({ ...prev, managerName: "" }))
+  }
+
+  // Clear selected station manager
+  const clearStationManager = () => {
+    setSelectedStationManager(null)
+    setFormData(prev => ({
+      ...prev,
+      managerName: "",
+      managerEmail: ""
+    }))
+  }
+
+  // Fetch managers when form opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchManagers()
+    }
+  }, [isOpen, fetchManagers])
+
   // Handle form input changes
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -90,25 +203,25 @@ export default function AddStationForm({ isOpen, onClose, onSubmit }) {
   // Auto-generate station code based on name and city
   const generateStationCode = (name, city) => {
     if (!name || !city) return ""
-    const namePrefix = name.split(" ")[0].substring(0, 3).toUpperCase()
-    const cityPrefix = city.substring(0, 3).toUpperCase()
-    const timestamp = Date.now().toString().slice(-3)
-    return `${namePrefix}-${cityPrefix}-${timestamp}`
+    const namePart = name.replace(/\s+/g, "").substring(0, 3).toUpperCase()
+    const cityPart = city.replace(/\s+/g, "").substring(0, 3).toUpperCase()
+    const timestamp = Date.now().toString().slice(-4)
+    return `${namePart}-${cityPart}-${timestamp}`
   }
 
   // Handle station name change and auto-generate code
   const handleStationNameChange = (value) => {
-    handleInputChange("stationName", value)
-    if (value && formData.city && !formData.stationCode) {
-      handleInputChange("stationCode", generateStationCode(value, formData.city))
+    handleInputChange("name", value)
+    if (value && formData.city && !formData.code) {
+      handleInputChange("code", generateStationCode(value, formData.city))
     }
   }
 
   // Handle city change and update station code
   const handleCityChange = (value) => {
     handleInputChange("city", value)
-    if (formData.stationName && value) {
-      handleInputChange("stationCode", generateStationCode(formData.stationName, value))
+    if (formData.name && value) {
+      handleInputChange("code", generateStationCode(formData.name, value))
     }
   }
 
@@ -116,9 +229,113 @@ export default function AddStationForm({ isOpen, onClose, onSubmit }) {
   const handleFuelBrandToggle = (brand) => {
     const currentBrands = formData.fuelBrands || []
     const updatedBrands = currentBrands.includes(brand)
-      ? currentBrands.filter((b) => b !== brand)
+      ? currentBrands.filter(b => b !== brand)
       : [...currentBrands, brand]
     handleInputChange("fuelBrands", updatedBrands)
+  }
+
+  // Asset search
+  const handleAssetSearch = useCallback(async (term) => {
+    setAssetQuery(term)
+    setAssetsLoading(true)
+    try {
+      const res = await searchAssets(term)
+      const items = Array.isArray(res) ? res : res.assets || res || []
+      setAssetResults(items)
+    } catch (e) {
+      setAssetResults([])
+    } finally {
+      setAssetsLoading(false)
+    }
+  }, [])
+
+  const addAssetSelection = (asset) => {
+    if (!asset) return
+    const id = asset.id || asset._id || asset.assetCode
+    if (!id) return
+    if (selectedAssets.some((a) => (a.id || a._id) === id)) return
+    setSelectedAssets((prev) => [...prev, { id, name: asset.name || asset.title || id, category: asset.category || asset.type }])
+    handleInputChange("assetIds", [...formData.assetIds, id])
+  }
+
+  const removeAssetSelection = (id) => {
+    setSelectedAssets((prev) => prev.filter((a) => (a.id || a._id) !== id))
+    handleInputChange("assetIds", formData.assetIds.filter((x) => x !== id))
+  }
+
+  // User search
+  const handleManagerSearch = useCallback(async (query) => {
+    if (query.trim().length < 2) {
+      setManagerResults([])
+      return
+    }
+
+    setManagersLoading(true)
+    try {
+      const results = await searchUsers(query)
+      setManagerResults(results)
+    } catch (error) {
+      console.error("Error searching users:", error)
+      toast({
+        title: "Error",
+        description: "Failed to search users",
+        variant: "destructive"
+      })
+    } finally {
+      setManagersLoading(false)
+    }
+  }, [])
+
+  const handleTechnicianSearch = useCallback(async (query) => {
+    if (query.trim().length < 2) {
+      setTechnicianResults([])
+      return
+    }
+
+    setTechniciansLoading(true)
+    try {
+      const results = await searchUsers(query)
+      setTechnicianResults(results)
+    } catch (error) {
+      console.error("Error searching users:", error)
+      toast({
+        title: "Error",
+        description: "Failed to search users",
+        variant: "destructive"
+      })
+    } finally {
+      setTechniciansLoading(false)
+    }
+  }, [])
+
+  const selectUser = (user) => {
+    if (!user) return
+    const id = user.id || user._id
+    const fullName = user.name || [user.FirstName, user.LastName].filter(Boolean).join(" ") || user.email || id
+    setSelectedUser({ id, name: fullName, email: user.Email || user.email })
+    handleInputChange("managerUserId", id)
+    setManagerQuery("")
+    setManagerResults([])
+  }
+
+  const selectTechnician = (user) => {
+    if (!user) return
+    const id = user.id || user._id
+    const fullName = user.name || [user.FirstName, user.LastName].filter(Boolean).join(" ") || user.email || id
+    if (!selectedTechnicians.find(t => t.id === id)) {
+      setSelectedTechnicians(prev => [...prev, { id, name: fullName, email: user.Email || user.email }])
+    }
+    setTechnicianQuery("")
+    setTechnicianResults([])
+  }
+
+  const removeTechnician = (technicianId) => {
+    setSelectedTechnicians(prev => prev.filter(t => t.id !== technicianId))
+  }
+
+  const clearManager = () => {
+    setSelectedUser(null)
+    handleInputChange("managerUserId", "")
   }
 
   // Handle file upload
@@ -161,10 +378,8 @@ export default function AddStationForm({ isOpen, onClose, onSubmit }) {
   const handleDrag = useCallback((e) => {
     e.preventDefault()
     e.stopPropagation()
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true)
-    } else if (e.type === "dragleave") {
-      setDragActive(false)
+    if (e.type === "dragenter" || e.type === "dragleave" || e.type === "dragover") {
+      setDragActive(e.type !== "dragleave")
     }
   }, [])
 
@@ -194,10 +409,10 @@ export default function AddStationForm({ isOpen, onClose, onSubmit }) {
     const newErrors = {}
 
     // Basic Information
-    if (!formData.stationName.trim()) newErrors.stationName = "Station name is required"
-    if (!formData.stationCode.trim()) newErrors.stationCode = "Station code is required"
+    if (!formData.name.trim()) newErrors.name = "Station name is required"
+    if (!formData.code.trim()) newErrors.code = "Station code is required"
     if (!formData.licenseNumber.trim()) newErrors.licenseNumber = "License number is required"
-    if (!formData.stationType) newErrors.stationType = "Station type is required"
+    if (!formData.type) newErrors.type = "Station type is required"
 
     // Location Information
     if (!formData.address.trim()) newErrors.address = "Address is required"
@@ -208,6 +423,7 @@ export default function AddStationForm({ isOpen, onClose, onSubmit }) {
     if (!formData.phone.trim()) newErrors.phone = "Phone number is required"
     if (!formData.email.trim()) newErrors.email = "Email is required"
     if (!formData.managerName.trim()) newErrors.managerName = "Manager name is required"
+    if (!formData.managerEmail.trim()) newErrors.managerEmail = "Manager email is required"
 
     // Email validation
     if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
@@ -236,24 +452,26 @@ export default function AddStationForm({ isOpen, onClose, onSubmit }) {
         createdAt: new Date().toISOString(),
         status: "Active",
         id: `STN-${Date.now()}`,
+        assetIds: selectedAssets.map((a) => a.id),
+        managerUserId: selectedUser?.id || formData.managerUserId,
+        technicianUserIds: selectedTechnicians.map(t => t.id),
+        managerEmail: selectedStationManager?.email || formData.managerEmail // Send manager email
       }
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      // Call parent callback
+      // Submit via parent or leave to caller
       if (onSubmit) {
-        onSubmit(stationData)
+        await onSubmit(stationData)
       }
 
       toast.success("Station added successfully!")
 
       // Reset form
       setFormData({
-        stationName: "",
-        stationCode: "",
+        name: "",
+        code: "",
         licenseNumber: "",
-        stationType: "",
+        type: "",
+        location: "",
         address: "",
         city: "",
         region: "",
@@ -263,13 +481,34 @@ export default function AddStationForm({ isOpen, onClose, onSubmit }) {
         phone: "",
         email: "",
         managerName: "",
+        managerEmail: "",
+        capacity: "",
+        fuelTypes: [],
+        services: [],
         operatingHours: "",
         fuelBrands: [],
         establishedDate: "",
+        emergencyContact: "",
+        notes: "",
+        assetIds: [],
+        managerUserId: "",
+        technicianUserIds: [],
         photos: [],
         documents: [],
       })
+      setSelectedAssets([])
+      setSelectedUser(null)
+      setSelectedTechnicians([])
+      setSelectedStationManager(null)
       setErrors({})
+      setAssetQuery("")
+      setManagerQuery("")
+      setTechnicianQuery("")
+      setStationManagerQuery("")
+      setAssetResults([])
+      setManagerResults([])
+      setTechnicianResults([])
+      setStationManagerResults([])
 
       // Close form
       onClose()
@@ -305,10 +544,11 @@ export default function AddStationForm({ isOpen, onClose, onSubmit }) {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="basic">Basic Info</TabsTrigger>
               <TabsTrigger value="location">Location</TabsTrigger>
               <TabsTrigger value="contact">Contact</TabsTrigger>
+              <TabsTrigger value="assignments">Assignments</TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
             </TabsList>
 
@@ -316,36 +556,33 @@ export default function AddStationForm({ isOpen, onClose, onSubmit }) {
             <TabsContent value="basic" className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="stationName">Station Name *</Label>
+                  <Label htmlFor="name">Station Name *</Label>
                   <Input
-                    id="stationName"
-                    placeholder="e.g., Al-Noor Gas Station"
-                    value={formData.stationName}
+                    id="name"
+                    placeholder="Enter station name"
+                    value={formData.name}
                     onChange={(e) => handleStationNameChange(e.target.value)}
-                    className={errors.stationName ? "border-red-500" : ""}
+                    className={errors.name ? "border-red-500" : ""}
                   />
-                  {errors.stationName && (
-                    <p className="text-sm text-red-500 flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      {errors.stationName}
+                  {errors.name && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.name}
                     </p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="stationCode">Station Code *</Label>
+                  <Label htmlFor="code">Station Code *</Label>
                   <Input
-                    id="stationCode"
-                    placeholder="e.g., ALN-RYD-001"
-                    value={formData.stationCode}
-                    onChange={(e) => handleInputChange("stationCode", e.target.value)}
-                    className={errors.stationCode ? "border-red-500" : ""}
+                    id="code"
+                    placeholder="Auto-generated station code"
+                    value={formData.code}
+                    onChange={(e) => handleInputChange("code", e.target.value)}
+                    className={errors.code ? "border-red-500" : ""}
                   />
-                  <p className="text-xs text-muted-foreground">Auto-generated based on station name and city</p>
-                  {errors.stationCode && (
-                    <p className="text-sm text-red-500 flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      {errors.stationCode}
+                  {errors.code && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.code}
                     </p>
                   )}
                 </div>
@@ -356,26 +593,22 @@ export default function AddStationForm({ isOpen, onClose, onSubmit }) {
                   <Label htmlFor="licenseNumber">License Number *</Label>
                   <Input
                     id="licenseNumber"
-                    placeholder="e.g., GS-2024-001"
+                    placeholder="Enter license number"
                     value={formData.licenseNumber}
                     onChange={(e) => handleInputChange("licenseNumber", e.target.value)}
                     className={errors.licenseNumber ? "border-red-500" : ""}
                   />
                   {errors.licenseNumber && (
-                    <p className="text-sm text-red-500 flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" />
+                    <p className="text-sm text-red-500 mt-1">
                       {errors.licenseNumber}
                     </p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="stationType">Station Type *</Label>
-                  <Select
-                    value={formData.stationType}
-                    onValueChange={(value) => handleInputChange("stationType", value)}
-                  >
-                    <SelectTrigger className={errors.stationType ? "border-red-500" : ""}>
+                  <Label htmlFor="type">Station Type *</Label>
+                  <Select value={formData.type} onValueChange={(value) => handleInputChange("type", value)}>
+                    <SelectTrigger className={errors.type ? "border-red-500" : ""}>
                       <SelectValue placeholder="Select station type..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -386,10 +619,9 @@ export default function AddStationForm({ isOpen, onClose, onSubmit }) {
                       ))}
                     </SelectContent>
                   </Select>
-                  {errors.stationType && (
-                    <p className="text-sm text-red-500 flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      {errors.stationType}
+                  {errors.type && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.type}
                     </p>
                   )}
                 </div>
@@ -572,18 +804,306 @@ export default function AddStationForm({ isOpen, onClose, onSubmit }) {
 
               <div className="space-y-2">
                 <Label htmlFor="managerName">Station Manager Name *</Label>
-                <Input
-                  id="managerName"
-                  placeholder="e.g., Omar Al-Noor"
-                  value={formData.managerName}
-                  onChange={(e) => handleInputChange("managerName", e.target.value)}
-                  className={errors.managerName ? "border-red-500" : ""}
-                />
+                <Popover open={showStationManagerSearch} onOpenChange={setShowStationManagerSearch}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={showStationManagerSearch}
+                      className={`w-full justify-between ${errors.managerName ? "border-red-500" : ""}`}
+                    >
+                      {selectedStationManager ? (
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-blue-600" />
+                          <div className="text-left">
+                            <div className="font-medium">{selectedStationManager.firstName} {selectedStationManager.lastName}</div>
+                            <div className="text-xs text-muted-foreground">{selectedStationManager.email}</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">Search and select manager...</span>
+                      )}
+                      <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput
+                        placeholder="Search managers by name or email..."
+                        value={stationManagerQuery}
+                        onValueChange={(value) => {
+                          setStationManagerQuery(value)
+                          searchStationManagers(value)
+                        }}
+                      />
+                      <CommandList>
+                        {stationManagerResults.length === 0 && !stationManagerQuery ? (
+                          <div className="p-4 text-center text-sm text-muted-foreground">
+                            Start typing to search managers...
+                          </div>
+                        ) : stationManagerResults.length === 0 && stationManagerQuery ? (
+                          <CommandEmpty>No managers found.</CommandEmpty>
+                        ) : (
+                          <CommandGroup>
+                            {stationManagerResults.map((manager) => (
+                              <CommandItem
+                                key={manager._id || manager.id}
+                                value={manager._id || manager.id}
+                                onSelect={() => handleStationManagerSelect(manager)}
+                                className="flex items-center gap-3 p-3"
+                              >
+                                <User className="h-4 w-4 text-blue-600" />
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">{manager.firstName} {manager.lastName}</span>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {manager.role || "Manager"}
+                                    </Badge>
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">{manager.email}</div>
+                                  <div className="text-xs text-muted-foreground">{manager.station_Name || "No station assigned"}</div>
+                                </div>
+                                {selectedStationManager?._id === (manager._id || manager.id) && <Check className="h-4 w-4 text-blue-600" />}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                {selectedStationManager && (
+                  <p className="text-xs text-blue-600 flex items-center gap-1">
+                    <Check className="h-3 w-3" />
+                    Manager selected: {selectedStationManager.firstName} {selectedStationManager.lastName} ({selectedStationManager.email})
+                  </p>
+                )}
                 {errors.managerName && (
                   <p className="text-sm text-red-500 flex items-center gap-1">
                     <AlertCircle className="h-3 w-3" />
                     {errors.managerName}
                   </p>
+                )}
+                {errors.managerEmail && (
+                  <p className="text-sm text-red-500 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.managerEmail}
+                  </p>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* Assignments Tab */}
+            <TabsContent value="assignments" className="space-y-6">
+              {/* Assign Assets */}
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-base font-semibold">Assign Assets</Label>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Search and select assets to assign to this station
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Search assets..."
+                    value={assetQuery}
+                    onChange={(e) => setAssetQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        handleAssetSearch(assetQuery)
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAssetSearch(assetQuery)}
+                    disabled={assetsLoading}
+                  >
+                    {assetsLoading ? "Searching..." : "Search"}
+                  </Button>
+                </div>
+
+                {assetResults.length > 0 && (
+                  <Command className="border rounded-lg">
+                    <CommandList>
+                      {assetResults.map((asset) => (
+                        <CommandItem
+                          key={asset.id}
+                          onSelect={() => addAssetSelection(asset)}
+                          className="cursor-pointer"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <span className="font-medium">{asset.name}</span>
+                            <span className="text-sm text-muted-foreground">({asset.category})</span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandList>
+                  </Command>
+                )}
+
+                {selectedAssets.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Selected Assets:</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedAssets.map((asset) => (
+                        <Badge key={asset.id} variant="secondary" className="flex items-center gap-1">
+                          {asset.name}
+                          <button
+                            type="button"
+                            onClick={() => removeAssetSelection(asset.id)}
+                            className="ml-1 hover:text-destructive"
+                          >
+                            ×
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Assign Manager */}
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-base font-semibold">Assign Manager</Label>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Search and select one manager for this station
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Search users for manager..."
+                    value={managerQuery}
+                    onChange={(e) => setManagerQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        handleManagerSearch(managerQuery)
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleManagerSearch(managerQuery)}
+                    disabled={managersLoading}
+                  >
+                    {managersLoading ? "Searching..." : "Search"}
+                  </Button>
+                </div>
+
+                {managerResults.length > 0 && (
+                  <Command className="border rounded-lg">
+                    <CommandList>
+                      {managerResults.map((user) => (
+                        <CommandItem
+                          key={user.id || user._id}
+                          onSelect={() => selectUser(user)}
+                          className="cursor-pointer"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <span className="font-medium">{user.name || [user.FirstName, user.LastName].filter(Boolean).join(" ") || user.email}</span>
+                            <span className="text-sm text-muted-foreground">({user.role || user.Role || "User"})</span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandList>
+                  </Command>
+                )}
+
+                {selectedUser && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Selected Manager:</Label>
+                    <Badge variant="secondary" className="flex items-center gap-1">
+                      {selectedUser.name} (Manager)
+                      <button
+                        type="button"
+                        onClick={clearManager}
+                        className="ml-1 hover:text-destructive"
+                      >
+                        ×
+                      </button>
+                    </Badge>
+                  </div>
+                )}
+              </div>
+
+              {/* Assign Technicians */}
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-base font-semibold">Assign Technicians</Label>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Search and select unlimited technicians for this station
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Search users for technicians..."
+                    value={technicianQuery}
+                    onChange={(e) => setTechnicianQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        handleTechnicianSearch(technicianQuery)
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleTechnicianSearch(technicianQuery)}
+                    disabled={techniciansLoading}
+                  >
+                    {techniciansLoading ? "Searching..." : "Search"}
+                  </Button>
+                </div>
+
+                {technicianResults.length > 0 && (
+                  <Command className="border rounded-lg">
+                    <CommandList>
+                      {technicianResults.map((user) => (
+                        <CommandItem
+                          key={user.id || user._id}
+                          onSelect={() => selectTechnician(user)}
+                          className="cursor-pointer"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <span className="font-medium">{user.name || [user.FirstName, user.LastName].filter(Boolean).join(" ") || user.email}</span>
+                            <span className="text-sm text-muted-foreground">({user.role || user.Role || "User"})</span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandList>
+                  </Command>
+                )}
+
+                {selectedTechnicians.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Selected Technicians:</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedTechnicians.map((technician) => (
+                        <Badge key={technician.id} variant="secondary" className="flex items-center gap-1">
+                          {technician.name} (Technician)
+                          <button
+                            type="button"
+                            onClick={() => removeTechnician(technician.id)}
+                            className="ml-1 hover:text-destructive"
+                          >
+                            ×
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
             </TabsContent>

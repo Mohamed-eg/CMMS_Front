@@ -42,8 +42,9 @@ import {
   Shield,
   Activity,
 } from "lucide-react"
-import { use, useEffect, useState } from "react"
-import { useSelector } from "react-redux"
+import { useEffect, useState } from "react"
+import { useSelector, useDispatch } from "react-redux"
+import { loadSidebarInfo, selectTotalWorkOrders, selectTotalAssets, selectAssignedWorkOrders } from "@/lib/features/sidebar/sidebarSlice"
 
 // Navigation items
 const navigationItems = [
@@ -130,6 +131,7 @@ const navigationItems = [
 // User data (this would come from auth context in a real app)
 export function AppSidebar({ ...props }) {
   const router = useRouter()
+  const dispatch = useDispatch()
   const [userData,setUser] = useState({
     firstName: "Ahmed Al-Rashid",
     email: "ahmed.rashid@cmms.sa",
@@ -137,8 +139,12 @@ export function AppSidebar({ ...props }) {
     avatar: "/placeholder-user.jpg",
     status: "online",
   })
-  const workOrderCount = useSelector(state => state.workOrders?.workOrders?.length || 0)
-  const assetCount = useSelector(state => state.assets?.assets?.length || 0)
+  
+  // Get sidebar info from Redux
+  const totalWorkOrders = useSelector(selectTotalWorkOrders)
+  const totalAssets = useSelector(selectTotalAssets)
+  const assignedWorkOrders = useSelector(selectAssignedWorkOrders)
+  
   useEffect(() => {
     const userData = localStorage.getItem("user")
     if (!userData) {
@@ -147,11 +153,18 @@ export function AppSidebar({ ...props }) {
       setUser(JSON.parse(userData))
     }
   }, [router])
+
+  // Load sidebar info when component mounts
+  useEffect(() => {
+    dispatch(loadSidebarInfo())
+  }, [dispatch])
+
   const pathname = usePathname()
 
   // Get user role
   const userRole = userData.role?.toLowerCase() || userData.Role?.toLowerCase()
   const isTechnician = userRole === "technician"
+  const isManager = userRole === "manager" || userRole === "admin"
 
   // Filter navigation items based on user role
   const getFilteredNavigationItems = () => {
@@ -166,7 +179,7 @@ export function AppSidebar({ ...props }) {
               url: "/dashboard/technician",
               icon: Wrench,
               description: "View and manage your assigned work orders",
-              badge: { count: workOrderCount, variant: "destructive" },
+              badge: { count: assignedWorkOrders, variant: "destructive" },
             },
           ],
         },
@@ -179,17 +192,19 @@ export function AppSidebar({ ...props }) {
 
   const filteredNavItems = getFilteredNavigationItems()
 
-  // Clone navigationItems and inject workOrderCount
+  // Clone navigationItems and inject counts from API
   const navItemsWithCount = filteredNavItems.map(group => {
     if (group.title === "Operations") {
       return {
         ...group,
         items: group.items.map(item => {
           if (item.title === "Work Orders") {
-            return { ...item, badge: { count: workOrderCount, variant: "destructive" } }
+            // For managers, show total work orders; for technicians, show assigned work orders
+            const count = isManager ? totalWorkOrders : assignedWorkOrders
+            return { ...item, badge: { count, variant: "destructive" } }
           }
           if (item.title === "Assets") {
-            return { ...item, badge: { count: assetCount, variant: "secondary" } }
+            return { ...item, badge: { count: totalAssets, variant: "secondary" } }
           }
           return item
         }),
